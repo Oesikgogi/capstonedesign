@@ -1,0 +1,94 @@
+import os
+import smtplib
+from email.message import EmailMessage
+from email.utils import formataddr
+
+
+def _smtp_configured() -> bool:
+    return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_FROM_EMAIL"))
+
+
+def is_email_delivery_configured() -> bool:
+    return _smtp_configured()
+
+
+def _send_email(to_email: str, subject: str, body: str) -> bool:
+    if not _smtp_configured():
+        return False
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    from_email = os.getenv("SMTP_FROM_EMAIL")
+    from_name = os.getenv("SMTP_FROM_NAME", "Boo키우기")
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((from_name, from_email))
+    message["To"] = to_email
+    message.set_content(body)
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        if smtp_use_tls:
+            server.starttls()
+        if smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
+        server.send_message(message)
+
+    return True
+
+
+def send_signup_verification_code(to_email: str, code: str) -> bool:
+    body_lines = [
+        "Boo키우기 회원가입 인증번호입니다.",
+        "",
+        f"인증번호: {code}",
+        "",
+        "이 인증번호를 회원가입 화면에 입력해주세요.",
+    ]
+    return _send_email(
+        to_email=to_email,
+        subject="Boo키우기 학교 이메일 인증번호",
+        body="\n".join(body_lines),
+    )
+
+
+def send_password_reset(to_email: str, token: str) -> bool:
+    password_reset_url = os.getenv("PASSWORD_RESET_URL", "").rstrip("/")
+    app_base_url = os.getenv("APP_BASE_URL", "").rstrip("/")
+    reset_url_base = password_reset_url or (
+        f"{app_base_url}/password-reset" if app_base_url else ""
+    )
+    reset_url = f"{reset_url_base}?token={token}" if reset_url_base else None
+
+    body_lines = [
+        "Boo키우기 비밀번호 재설정 요청이 접수되었습니다.",
+        "",
+    ]
+    if reset_url:
+        body_lines.extend(
+            [
+                "아래 링크에서 새 비밀번호를 설정해주세요.",
+                reset_url,
+            ]
+        )
+    else:
+        body_lines.extend(
+            [
+                "아래 재설정 토큰을 앱의 비밀번호 재설정 화면에 입력해주세요.",
+                token,
+            ]
+        )
+    body_lines.extend(
+        [
+            "",
+            "본인이 요청하지 않았다면 이 메일을 무시해도 됩니다.",
+        ]
+    )
+    return _send_email(
+        to_email=to_email,
+        subject="Boo키우기 비밀번호 재설정",
+        body="\n".join(body_lines),
+    )

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "상불비",
+    "school_food_img": "/images/school-foods/sangbulbi.png",
+    "type": "weekday"
+  },
+  {
+    "name": "참치회덮밥",
+    "school_food_img": "/images/school-foods/tuna-sashimi-rice.png",
+    "type": "weekday"
+  },
+  {
+    "name": "라면",
+    "school_food_img": "/images/school-foods/ramen.png",
+    "type": "weekday"
+  },
+  {
+    "name": "토스트",
+    "school_food_img": "/images/school-foods/toast.png",
+    "type": "weekday"
+  },
+  {
+    "name": "카레",
+    "school_food_img": "/images/school-foods/curry.png",
+    "type": "weekday"
+  },
+  {
+    "name": "반계탕",
+    "school_food_img": "/images/school-foods/half-chicken-soup.png",
+    "type": "weekday"
+  },
+  {
+    "name": "갈비탕",
+    "school_food_img": "/images/school-foods/galbitang.png",
+    "type": "weekday"
+  },
+  {
+    "name": "치즈돈까스",
+    "school_food_img": "/images/school-foods/cheese-pork-cutlet.png",
+    "type": "weekday"
+  },
+  {
+    "name": "제육덮밥",
+    "school_food_img": "/images/school-foods/spicy-pork-rice.png",
+    "type": "weekday"
+  },
+  {
+    "name": "짜장면",
+    "school_food_img": "/images/school-foods/jjajangmyeon.png",
+    "type": "weekday"
+  },
+  {
+    "name": "떡볶이",
+    "school_food_img": "/images/school-foods/tteokbokki.png",
+    "type": "weekday"
+  },
+  {
+    "name": "이상한떡볶이",
+    "school_food_img": "/images/school-foods/strange-tteokbokki.png",
+    "type": "weekend"
+  },
+  {
+    "name": "할머니보쌈",
+    "school_food_img": "/images/school-foods/grandma-bossam.png",
+    "type": "weekend"
+  },
+  {
+    "name": "KFC",
+    "school_food_img": "/images/school-foods/kfc.png",
+    "type": "weekend"
+  }
+]
