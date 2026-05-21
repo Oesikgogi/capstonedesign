@@ -1,12 +1,41 @@
+import os
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./boo_app.db"
+
+def _load_dotenv():
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
+
+
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./boo_app.db")
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+
+connect_args = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -17,36 +46,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def migrate_sqlite_schema():
-    if not SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-        return
-
-    required_user_columns = {
-        "name": "VARCHAR DEFAULT ''",
-        "email_verified": "BOOLEAN DEFAULT 0",
-        "email_verified_at": "DATETIME",
-    }
-    required_school_food_columns = {
-        "school_food_img": "VARCHAR",
-    }
-
-    with engine.begin() as connection:
-        existing_columns = {
-            row[1] for row in connection.execute(text("PRAGMA table_info(users)")).fetchall()
-        }
-        for column_name, column_type in required_user_columns.items():
-            if column_name not in existing_columns:
-                connection.execute(
-                    text(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
-                )
-
-        existing_school_food_columns = {
-            row[1] for row in connection.execute(text("PRAGMA table_info(school_foods)")).fetchall()
-        }
-        for column_name, column_type in required_school_food_columns.items():
-            if column_name not in existing_school_food_columns:
-                connection.execute(
-                    text(f"ALTER TABLE school_foods ADD COLUMN {column_name} {column_type}")
-                )

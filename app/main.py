@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 
-from .database import Base, engine, migrate_sqlite_schema
+from .database import Base, engine
 from .routers import character, quiz, school_food, user, user_quiz_connect
 
 Base.metadata.create_all(bind=engine)
-migrate_sqlite_schema()
 
 app = FastAPI(title="Boo키우기 API", version="0.1.0")
 

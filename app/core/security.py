@@ -1,11 +1,12 @@
 import hashlib
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
 
-SECRET_KEY = "boo_app_change_this_secret"
+SECRET_KEY = os.getenv("SECRET_KEY", "boo_app_change_this_secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 30

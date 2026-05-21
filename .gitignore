@@ -7,4 +7,4 @@ boo_app.db
 *.sqlite3
 .env
 .env.*
-
+docs/IMPLEMENTATION.md

@@ -22,6 +22,23 @@ Swagger UI:
 http://127.0.0.1:8000/docs
 ```
 
+## Environment Variables
+
+로컬 개발에서는 별도 설정이 없으면 `boo_app.db` SQLite 파일을 사용합니다.
+Vercel 배포에서는 PostgreSQL 연결 문자열을 `DATABASE_URL`에 등록해야 합니다.
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+SECRET_KEY=change-this-secret
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=sender@example.com
+SMTP_PASSWORD=app-password
+SMTP_FROM_EMAIL=sender@example.com
+SMTP_FROM_NAME=Boo키우기
+SMTP_USE_TLS=true
+```
+
 ## ERD
 
 See [docs/ERD.md](docs/ERD.md).
