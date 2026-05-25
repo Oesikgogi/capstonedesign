@@ -28,9 +28,17 @@ class UserLogin(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    student_id: Optional[str] = None
     nickname: Optional[str] = None
     password: Optional[str] = None
     image: Optional[str] = None
+
+    @field_validator("student_id", mode="before")
+    @classmethod
+    def normalize_student_id(cls, value):
+        if value is None:
+            return value
+        return str(value)
 
 
 class UserOut(UserBase):
@@ -41,6 +49,10 @@ class UserOut(UserBase):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserAccountUpdate(UserUpdate):
+    pass
 
 
 class SignupEmailRequest(BaseModel):
@@ -227,3 +239,29 @@ class SchoolFoodFeedStatus(BaseModel):
     current_slot: Optional[str] = None
     fed_slots: list[str]
     can_feed_now: bool
+
+
+class FriendUser(BaseModel):
+    user_id: int
+    student_id: str
+    nickname: str
+    image: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FriendCreate(BaseModel):
+    student_id: str
+
+    @field_validator("student_id", mode="before")
+    @classmethod
+    def normalize_student_id(cls, value):
+        return str(value)
+
+
+class FriendOut(BaseModel):
+    friend_id: int
+    created_at: datetime
+    friend: FriendUser
+
+    model_config = ConfigDict(from_attributes=True)

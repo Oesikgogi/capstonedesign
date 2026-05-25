@@ -351,6 +351,57 @@ def read_current_user(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 
+@router.put("/me", response_model=schemas.UserOut)
+def update_current_user(
+    user_in: schemas.UserAccountUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    update_data = user_in.dict(exclude_unset=True)
+
+    if "student_id" in update_data:
+        student_id = update_data["student_id"]
+        if not validate_student_id(student_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Student ID must be 9 digits")
+        existing_user = db.query(models.User).filter(models.User.student_id == student_id).first()
+        if existing_user and existing_user.user_id != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Student ID already registered")
+
+    if "nickname" in update_data:
+        existing_user = db.query(models.User).filter(models.User.nickname == update_data["nickname"]).first()
+        if existing_user and existing_user.user_id != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nickname already taken")
+
+    if update_data.get("password"):
+        update_data["password"] = get_password_hash(update_data["password"])
+
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/me")
+def delete_current_user(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.query(models.Friend).filter(
+        (models.Friend.user_id == current_user.user_id)
+        | (models.Friend.friend_user_id == current_user.user_id)
+    ).delete(synchronize_session=False)
+    db.query(models.UserQuizConnect).filter(models.UserQuizConnect.user_id == current_user.user_id).delete()
+    db.query(models.SchoolFoodFeed).filter(models.SchoolFoodFeed.user_id == current_user.user_id).delete()
+    db.query(models.Character).filter(models.Character.user_id == current_user.user_id).delete()
+    db.query(models.RefreshToken).filter(models.RefreshToken.user_id == current_user.user_id).delete()
+    db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == current_user.user_id).delete()
+    db.delete(current_user)
+    db.commit()
+    return {"detail": "User deleted"}
+
+
 @router.post("/logout")
 def logout(refresh_in: schemas.RefreshRequest, db: Session = Depends(get_db)):
     token_record = db.query(models.RefreshToken).filter(models.RefreshToken.token == refresh_in.refresh_token).first()

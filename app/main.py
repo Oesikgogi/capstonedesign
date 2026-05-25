@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from .database import Base, engine
-from .routers import character, quiz, school_food, user, user_quiz_connect
+from .routers import character, friend, quiz, school_food, user, user_quiz_connect
 
 Base.metadata.create_all(bind=engine)
 
@@ -11,6 +11,7 @@ app.include_router(user.router)
 app.include_router(school_food.router)
 app.include_router(quiz.router)
 app.include_router(character.router)
+app.include_router(friend.router)
 app.include_router(user_quiz_connect.router)
 
 @app.get("/")

@@ -24,6 +24,12 @@ class User(Base):
     quizzes = relationship("UserQuizConnect", back_populates="user")
     characters = relationship("Character", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    friends = relationship(
+        "Friend",
+        foreign_keys="Friend.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Quiz(Base):
@@ -87,6 +93,19 @@ class SchoolFoodFeed(Base):
 
     user = relationship("User")
     school_food = relationship("SchoolFood")
+
+
+class Friend(Base):
+    __tablename__ = "friends"
+    __table_args__ = (UniqueConstraint("user_id", "friend_user_id", name="uq_user_friend_once"),)
+
+    friend_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    friend_user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="friends")
+    friend_user = relationship("User", foreign_keys=[friend_user_id])
 
 
 class RefreshToken(Base):
