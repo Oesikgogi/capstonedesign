@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -39,15 +37,14 @@ def create_room_item(item_in: schemas.RoomItemCreate, db: Session = Depends(get_
 
 @router.get("/items", response_model=list[schemas.ShopItemOut])
 def list_shop_items(
-    item_type: Optional[str] = None,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(models.RoomItem)
-    if item_type:
-        query = query.filter(models.RoomItem.item_type == item_type)
-
-    items = query.order_by(models.RoomItem.item_type, models.RoomItem.price, models.RoomItem.item_id).all()
+    items = (
+        db.query(models.RoomItem)
+        .order_by(models.RoomItem.item_type, models.RoomItem.price, models.RoomItem.item_id)
+        .all()
+    )
     owned_item_ids = {
         row.item_id
         for row in db.query(models.UserRoomItem.item_id)
