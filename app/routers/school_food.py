@@ -12,6 +12,7 @@ from .user import get_current_user
 router = APIRouter(prefix="/school-foods", tags=["school-foods"])
 
 FEED_XP = 50
+FEED_COIN_COST = 4
 KST = ZoneInfo("Asia/Seoul")
 
 
@@ -136,7 +137,11 @@ def feed_school_food(
             detail="This meal slot has already been fed today",
         )
 
+    if current_user.coin < FEED_COIN_COST:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough coins")
+
     current_user.xp_point += FEED_XP
+    current_user.coin -= FEED_COIN_COST
     feed_record = models.SchoolFoodFeed(
         user_id=current_user.user_id,
         school_food_id=school_food.school_food_id,
@@ -156,7 +161,9 @@ def feed_school_food(
         "school_food_id": school_food.school_food_id,
         "meal_slot": meal_slot,
         "awarded_xp": FEED_XP,
+        "spent_coin": FEED_COIN_COST,
         "xp_point": current_user.xp_point,
+        "coin": current_user.coin,
         "fed_at": feed_record.fed_at,
     }
 

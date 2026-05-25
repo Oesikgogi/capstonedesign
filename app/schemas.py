@@ -44,6 +44,9 @@ class UserUpdate(BaseModel):
 class UserOut(UserBase):
     user_id: int
     xp_point: int
+    coin: int
+    heart: int
+    heart_updated_at: Optional[datetime] = None
     email_verified: bool
     email_verified_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
@@ -143,7 +146,9 @@ class QuizSubmitResult(BaseModel):
     detail: str
     correct: bool
     awarded_points: int
+    awarded_coin: int
     xp_point: int
+    coin: int
     correct_answer: str
 
 
@@ -230,7 +235,9 @@ class SchoolFoodFeedResult(BaseModel):
     school_food_id: int
     meal_slot: str
     awarded_xp: int
+    spent_coin: int
     xp_point: int
+    coin: int
     fed_at: datetime
 
 
@@ -265,3 +272,18 @@ class FriendOut(BaseModel):
     friend: FriendUser
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EconomyStatus(BaseModel):
+    coin: int
+    heart: int
+    max_heart: int
+
+
+class MiniGamePlayResult(BaseModel):
+    detail: str
+    awarded_coin: int
+    spent_heart: int
+    coin: int
+    heart: int
+    max_heart: int

@@ -13,6 +13,7 @@ router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 QUIZ_CORRECT_XP = 30
 QUIZ_INCORRECT_XP = -10
+QUIZ_COIN_REWARD = 10
 QUIZ_DAILY_LIMIT = 3
 QUIZ_COOLDOWN_HOURS = 3
 KST = ZoneInfo("Asia/Seoul")
@@ -163,6 +164,7 @@ def submit_quiz(
     correct = normalize_answer(submit_in.answer) == normalize_answer(quiz.answer)
     awarded_points = QUIZ_CORRECT_XP if correct else QUIZ_INCORRECT_XP
     current_user.xp_point += awarded_points
+    current_user.coin += QUIZ_COIN_REWARD
 
     solved_record = models.UserQuizConnect(
         user_id=current_user.user_id,
@@ -178,7 +180,9 @@ def submit_quiz(
         "detail": "Correct answer" if correct else "Incorrect answer",
         "correct": correct,
         "awarded_points": awarded_points,
+        "awarded_coin": QUIZ_COIN_REWARD,
         "xp_point": current_user.xp_point,
+        "coin": current_user.coin,
         "correct_answer": quiz.answer,
     }
 

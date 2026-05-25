@@ -19,6 +19,9 @@ class User(Base):
     email_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     xp_point = Column(Integer, default=0)
+    coin = Column(Integer, default=0)
+    heart = Column(Integer, default=5)
+    heart_updated_at = Column(DateTime, default=datetime.utcnow)
     image = Column(String, nullable=True)
 
     quizzes = relationship("UserQuizConnect", back_populates="user")
