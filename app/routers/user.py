@@ -395,6 +395,12 @@ def delete_current_user(
     db.query(models.UserQuizConnect).filter(models.UserQuizConnect.user_id == current_user.user_id).delete()
     db.query(models.SchoolFoodFeed).filter(models.SchoolFoodFeed.user_id == current_user.user_id).delete()
     db.query(models.Character).filter(models.Character.user_id == current_user.user_id).delete()
+    db.query(models.UserRoomEquipped).filter(models.UserRoomEquipped.user_id == current_user.user_id).delete()
+    db.query(models.UserRoomItem).filter(models.UserRoomItem.user_id == current_user.user_id).delete()
+    db.query(models.GuestbookEntry).filter(
+        (models.GuestbookEntry.room_owner_id == current_user.user_id)
+        | (models.GuestbookEntry.writer_id == current_user.user_id)
+    ).delete(synchronize_session=False)
     db.query(models.RefreshToken).filter(models.RefreshToken.user_id == current_user.user_id).delete()
     db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == current_user.user_id).delete()
     db.delete(current_user)

@@ -34,6 +34,8 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     minigame_results = relationship("MiniGameResult", back_populates="user", cascade="all, delete-orphan")
+    owned_room_items = relationship("UserRoomItem", back_populates="user", cascade="all, delete-orphan")
+    equipped_room_items = relationship("UserRoomEquipped", back_populates="user", cascade="all, delete-orphan")
 
 
 class Quiz(Base):
@@ -125,6 +127,61 @@ class MiniGameResult(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="minigame_results")
+
+
+class RoomItem(Base):
+    __tablename__ = "room_items"
+
+    item_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    item_type = Column(String, nullable=False)
+    image = Column(String, nullable=True)
+    price = Column(Integer, nullable=False, default=0)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    owners = relationship("UserRoomItem", back_populates="item")
+    equipped_by = relationship("UserRoomEquipped", back_populates="item")
+
+
+class UserRoomItem(Base):
+    __tablename__ = "user_room_items"
+    __table_args__ = (UniqueConstraint("user_id", "item_id", name="uq_user_room_item_once"),)
+
+    owned_item_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    item_id = Column(Integer, ForeignKey("room_items.item_id", ondelete="CASCADE"), nullable=False)
+    purchased_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="owned_room_items")
+    item = relationship("RoomItem", back_populates="owners")
+
+
+class UserRoomEquipped(Base):
+    __tablename__ = "user_room_equipped"
+    __table_args__ = (UniqueConstraint("user_id", "item_type", name="uq_user_room_equipped_type"),)
+
+    equipped_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    item_type = Column(String, nullable=False)
+    item_id = Column(Integer, ForeignKey("room_items.item_id", ondelete="CASCADE"), nullable=False)
+    equipped_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="equipped_room_items")
+    item = relationship("RoomItem", back_populates="equipped_by")
+
+
+class GuestbookEntry(Base):
+    __tablename__ = "guestbook_entries"
+
+    entry_id = Column(Integer, primary_key=True, index=True)
+    room_owner_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    writer_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    content = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    room_owner = relationship("User", foreign_keys=[room_owner_id])
+    writer = relationship("User", foreign_keys=[writer_id])
 
 
 class RefreshToken(Base):

@@ -329,3 +329,81 @@ class MiniGameRankingMe(BaseModel):
     best_score: Optional[int] = None
     total_ranked_users: int
     total_users: int
+
+
+class RoomItemBase(BaseModel):
+    name: str
+    item_type: str
+    image: Optional[str] = None
+    price: int = 0
+    is_default: Optional[bool] = False
+
+    @field_validator("price")
+    @classmethod
+    def validate_price(cls, value):
+        if value < 0:
+            raise ValueError("Price must be 0 or greater")
+        return value
+
+
+class RoomItemCreate(RoomItemBase):
+    pass
+
+
+class RoomItemOut(RoomItemBase):
+    item_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ShopItemOut(RoomItemOut):
+    owned: bool
+    equipped: bool
+
+
+class RoomItemPurchaseResult(BaseModel):
+    detail: str
+    item: RoomItemOut
+    coin: int
+
+
+class RoomEquipRequest(BaseModel):
+    item_id: int
+
+
+class RoomEquippedItemOut(BaseModel):
+    equipped_id: int
+    item_type: str
+    equipped_at: datetime
+    item: RoomItemOut
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoomView(BaseModel):
+    owner: FriendUser
+    equipped_items: list[RoomEquippedItemOut]
+
+
+class GuestbookCreate(BaseModel):
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("Content is required")
+        if len(value) > 15:
+            raise ValueError("Content must be 15 characters or fewer")
+        return value
+
+
+class GuestbookOut(BaseModel):
+    entry_id: int
+    room_owner_id: int
+    writer_id: int
+    writer_nickname: str
+    content: str
+    created_at: datetime

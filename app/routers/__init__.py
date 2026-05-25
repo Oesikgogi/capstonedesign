@@ -3,6 +3,8 @@ from . import economy
 from . import friend
 from . import minigame
 from . import quiz
+from . import room
 from . import school_food
+from . import shop
 from . import user
 from . import user_quiz_connect
