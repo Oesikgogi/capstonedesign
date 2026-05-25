@@ -418,8 +418,8 @@ class GuestbookCreate(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Content is required")
-        if len(value) > 15:
-            raise ValueError("Content must be 15 characters or fewer")
+        if len(value) > 30:
+            raise ValueError("Content must be 30 characters or fewer")
         return value
 
 
