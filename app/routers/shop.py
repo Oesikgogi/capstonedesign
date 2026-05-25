@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,26 @@ from ..database import get_db
 from .user import get_current_user
 
 router = APIRouter(prefix="/shop", tags=["shop"])
+
+SHOP_ITEM_TYPES = [
+    {"item_type": "desk", "label": "책상"},
+    {"item_type": "bed", "label": "침대"},
+    {"item_type": "closet", "label": "장롱"},
+    {"item_type": "room", "label": "마이룸방"},
+]
+
+SHOP_ITEM_TYPE_ALIASES = {
+    item["item_type"]: item["item_type"]
+    for item in SHOP_ITEM_TYPES
+}
+SHOP_ITEM_TYPE_ALIASES.update({item["label"]: item["item_type"] for item in SHOP_ITEM_TYPES})
+
+
+def normalize_item_type(item_type: str) -> str:
+    normalized = SHOP_ITEM_TYPE_ALIASES.get(item_type.strip())
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid item type")
+    return normalized
 
 
 def serialize_shop_item(
@@ -26,6 +48,11 @@ def serialize_shop_item(
     }
 
 
+@router.get("/item-types", response_model=list[schemas.ShopItemTypeOut])
+def list_shop_item_types():
+    return SHOP_ITEM_TYPES
+
+
 @router.post("/items", response_model=schemas.RoomItemOut, status_code=status.HTTP_201_CREATED)
 def create_room_item(item_in: schemas.RoomItemCreate, db: Session = Depends(get_db)):
     item = models.RoomItem(**item_in.dict())
@@ -37,14 +64,15 @@ def create_room_item(item_in: schemas.RoomItemCreate, db: Session = Depends(get_
 
 @router.get("/items", response_model=list[schemas.ShopItemOut])
 def list_shop_items(
+    item_type: Optional[str] = None,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items = (
-        db.query(models.RoomItem)
-        .order_by(models.RoomItem.item_type, models.RoomItem.price, models.RoomItem.item_id)
-        .all()
-    )
+    query = db.query(models.RoomItem)
+    if item_type:
+        query = query.filter(models.RoomItem.item_type == normalize_item_type(item_type))
+
+    items = query.order_by(models.RoomItem.item_type, models.RoomItem.price, models.RoomItem.item_id).all()
     owned_item_ids = {
         row.item_id
         for row in db.query(models.UserRoomItem.item_id)

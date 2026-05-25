@@ -345,6 +345,24 @@ class RoomItemBase(BaseModel):
             raise ValueError("Price must be 0 or greater")
         return value
 
+    @field_validator("item_type")
+    @classmethod
+    def validate_item_type(cls, value):
+        item_type_aliases = {
+            "desk": "desk",
+            "책상": "desk",
+            "bed": "bed",
+            "침대": "bed",
+            "closet": "closet",
+            "장롱": "closet",
+            "room": "room",
+            "마이룸방": "room",
+        }
+        normalized = item_type_aliases.get(value.strip())
+        if not normalized:
+            raise ValueError("Item type must be one of desk, bed, closet, room")
+        return normalized
+
 
 class RoomItemCreate(RoomItemBase):
     pass
@@ -360,6 +378,11 @@ class RoomItemOut(RoomItemBase):
 class ShopItemOut(RoomItemOut):
     owned: bool
     equipped: bool
+
+
+class ShopItemTypeOut(BaseModel):
+    item_type: str
+    label: str
 
 
 class RoomItemPurchaseResult(BaseModel):
