@@ -287,3 +287,45 @@ class MiniGamePlayResult(BaseModel):
     coin: int
     heart: int
     max_heart: int
+
+
+class MiniGameResultCreate(BaseModel):
+    score: int
+    success: Optional[bool] = False
+    game_type: Optional[str] = None
+    location: Optional[str] = None
+    play_time_seconds: Optional[int] = None
+
+    @field_validator("score")
+    @classmethod
+    def validate_score(cls, value):
+        if value < 0:
+            raise ValueError("Score must be 0 or greater")
+        return value
+
+    @field_validator("play_time_seconds")
+    @classmethod
+    def validate_play_time_seconds(cls, value):
+        if value is not None and value < 0:
+            raise ValueError("Play time must be 0 or greater")
+        return value
+
+
+class MiniGameResultOut(BaseModel):
+    result_id: int
+    user_id: int
+    game_type: Optional[str] = None
+    location: Optional[str] = None
+    score: int
+    success: bool
+    play_time_seconds: Optional[int] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MiniGameRankingMe(BaseModel):
+    rank: Optional[int] = None
+    best_score: Optional[int] = None
+    total_ranked_users: int
+    total_users: int

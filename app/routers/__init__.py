@@ -1,6 +1,7 @@
 from . import character
 from . import economy
 from . import friend
+from . import minigame
 from . import quiz
 from . import school_food
 from . import user

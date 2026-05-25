@@ -33,6 +33,7 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    minigame_results = relationship("MiniGameResult", back_populates="user", cascade="all, delete-orphan")
 
 
 class Quiz(Base):
@@ -109,6 +110,21 @@ class Friend(Base):
 
     user = relationship("User", foreign_keys=[user_id], back_populates="friends")
     friend_user = relationship("User", foreign_keys=[friend_user_id])
+
+
+class MiniGameResult(Base):
+    __tablename__ = "minigame_results"
+
+    result_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    game_type = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    score = Column(Integer, nullable=False, default=0)
+    success = Column(Boolean, default=False)
+    play_time_seconds = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="minigame_results")
 
 
 class RefreshToken(Base):
