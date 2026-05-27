@@ -38,6 +38,7 @@ def _send_email(to_email: str, subject: str, body: str) -> bool:
     smtp_username = os.getenv("SMTP_USERNAME")
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    smtp_timeout = int(os.getenv("SMTP_TIMEOUT_SECONDS", "10"))
     from_email = os.getenv("SMTP_FROM_EMAIL")
     from_name = os.getenv("SMTP_FROM_NAME", "Boo키우기")
 
@@ -47,7 +48,7 @@ def _send_email(to_email: str, subject: str, body: str) -> bool:
     message["To"] = to_email
     message.set_content(body)
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=smtp_timeout) as server:
         if smtp_use_tls:
             server.starttls()
         if smtp_username and smtp_password:
