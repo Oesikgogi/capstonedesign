@@ -1,4 +1,5 @@
 import secrets
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -24,6 +25,7 @@ from ..core.security import (
 from ..database import get_db
 
 router = APIRouter(prefix="/user", tags=["user"])
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
 
@@ -112,6 +114,7 @@ def request_signup_email_verification(
     try:
         email_sent = send_signup_verification_code(email, verification_code)
     except Exception:
+        logger.exception("Failed to send signup verification email")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send verification email",
@@ -262,6 +265,7 @@ def request_password_reset(request_in: schemas.PasswordResetRequest, db: Session
     try:
         email_sent = send_password_reset(user.email, reset_token)
     except Exception:
+        logger.exception("Failed to send password reset email")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send password reset email",
