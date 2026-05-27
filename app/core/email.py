@@ -1,4 +1,5 @@
 import os
+import socket
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -21,6 +22,30 @@ def _load_dotenv() -> None:
 _load_dotenv()
 
 
+class IPv4SMTP(smtplib.SMTP):
+    def _get_socket(self, host, port, timeout):
+        last_error = None
+        for family, socktype, proto, _, address in socket.getaddrinfo(
+            host,
+            port,
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+        ):
+            sock = None
+            try:
+                sock = socket.socket(family, socktype, proto)
+                sock.settimeout(timeout)
+                sock.connect(address)
+                return sock
+            except OSError as exc:
+                last_error = exc
+                if sock is not None:
+                    sock.close()
+        if last_error is not None:
+            raise last_error
+        raise OSError(f"Could not resolve SMTP host: {host}")
+
+
 def _smtp_configured() -> bool:
     return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_FROM_EMAIL"))
 
@@ -38,6 +63,7 @@ def _send_email(to_email: str, subject: str, body: str) -> bool:
     smtp_username = os.getenv("SMTP_USERNAME")
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    smtp_force_ipv4 = os.getenv("SMTP_FORCE_IPV4", "true").lower() == "true"
     smtp_timeout = int(os.getenv("SMTP_TIMEOUT_SECONDS", "10"))
     from_email = os.getenv("SMTP_FROM_EMAIL")
     from_name = os.getenv("SMTP_FROM_NAME", "Boo키우기")
@@ -48,7 +74,8 @@ def _send_email(to_email: str, subject: str, body: str) -> bool:
     message["To"] = to_email
     message.set_content(body)
 
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=smtp_timeout) as server:
+    smtp_client = IPv4SMTP if smtp_force_ipv4 else smtplib.SMTP
+    with smtp_client(smtp_host, smtp_port, timeout=smtp_timeout) as server:
         if smtp_use_tls:
             server.starttls()
         if smtp_username and smtp_password:
