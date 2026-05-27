@@ -1,6 +1,8 @@
 import os
 import socket
 import smtplib
+import json
+import urllib.request
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
@@ -50,11 +52,43 @@ def _smtp_configured() -> bool:
     return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_FROM_EMAIL"))
 
 
+def _resend_configured() -> bool:
+    return bool(os.getenv("RESEND_API_KEY") and (os.getenv("RESEND_FROM_EMAIL") or os.getenv("SMTP_FROM_EMAIL")))
+
+
 def is_email_delivery_configured() -> bool:
-    return _smtp_configured()
+    return _resend_configured() or _smtp_configured()
+
+
+def _send_email_with_resend(to_email: str, subject: str, body: str) -> bool:
+    api_key = os.getenv("RESEND_API_KEY")
+    from_email = os.getenv("RESEND_FROM_EMAIL") or os.getenv("SMTP_FROM_EMAIL")
+    from_name = os.getenv("RESEND_FROM_NAME") or os.getenv("SMTP_FROM_NAME", "Boo키우기")
+
+    payload = {
+        "from": formataddr((from_name, from_email)),
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    }
+    request = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    timeout = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "10"))
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return 200 <= response.status < 300
 
 
 def _send_email(to_email: str, subject: str, body: str) -> bool:
+    if _resend_configured():
+        return _send_email_with_resend(to_email, subject, body)
+
     if not _smtp_configured():
         return False
 
