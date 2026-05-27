@@ -3,6 +3,7 @@ import socket
 import smtplib
 import json
 import urllib.request
+import urllib.error
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
@@ -81,8 +82,12 @@ def _send_email_with_resend(to_email: str, subject: str, body: str) -> bool:
         method="POST",
     )
     timeout = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "10"))
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return 200 <= response.status < 300
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return 200 <= response.status < 300
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Resend email delivery failed: {exc.code} {error_body}") from exc
 
 
 def _send_email(to_email: str, subject: str, body: str) -> bool:
