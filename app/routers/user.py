@@ -12,6 +12,7 @@ from ..core.email import (
     send_signup_verification_code,
     send_password_reset,
 )
+from ..core.errors import error_detail
 from ..core.security import (
     create_access_token,
     create_password_reset_token,
@@ -84,6 +85,27 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email verification required")
     return user
+
+
+def get_current_admin_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail("ADMIN_REQUIRED", "관리자 권한이 필요합니다."),
+        )
+    return current_user
+
+
+def get_or_create_user_preference(db: Session, user_id: int) -> models.UserPreference:
+    preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == user_id).first()
+    if preference:
+        return preference
+
+    preference = models.UserPreference(user_id=user_id)
+    db.add(preference)
+    db.commit()
+    db.refresh(preference)
+    return preference
 
 
 @router.post("/signup/email", response_model=schemas.SignupEmailVerificationOut)
@@ -387,6 +409,52 @@ def update_current_user(
     return current_user
 
 
+@router.post("/me/image", response_model=schemas.ProfileImageOut)
+def update_current_user_image(
+    image_in: schemas.ProfileImageRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.image = image_in.image_url
+    db.commit()
+    db.refresh(current_user)
+    return {"image": current_user.image}
+
+
+@router.delete("/me/image", response_model=schemas.ProfileImageOut)
+def delete_current_user_image(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.image = None
+    db.commit()
+    db.refresh(current_user)
+    return {"image": current_user.image}
+
+
+@router.get("/me/preferences", response_model=schemas.UserPreferenceOut)
+def get_current_user_preferences(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_or_create_user_preference(db, current_user.user_id)
+
+
+@router.put("/me/preferences", response_model=schemas.UserPreferenceOut)
+def update_current_user_preferences(
+    preference_in: schemas.UserPreferenceUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    preference = get_or_create_user_preference(db, current_user.user_id)
+    for field, value in preference_in.dict(exclude_unset=True).items():
+        setattr(preference, field, value)
+    preference.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(preference)
+    return preference
+
+
 @router.delete("/me")
 def delete_current_user(
     current_user: models.User = Depends(get_current_user),
@@ -407,6 +475,11 @@ def delete_current_user(
     ).delete(synchronize_session=False)
     db.query(models.RefreshToken).filter(models.RefreshToken.user_id == current_user.user_id).delete()
     db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == current_user.user_id).delete()
+    db.query(models.UserPreference).filter(models.UserPreference.user_id == current_user.user_id).delete()
+    db.query(models.FriendRequest).filter(
+        (models.FriendRequest.requester_id == current_user.user_id)
+        | (models.FriendRequest.receiver_id == current_user.user_id)
+    ).delete(synchronize_session=False)
     db.delete(current_user)
     db.commit()
     return {"detail": "User deleted"}
@@ -423,12 +496,19 @@ def logout(refresh_in: schemas.RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[schemas.UserOut])
-def list_users(db: Session = Depends(get_db)):
+def list_users(
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     return db.query(models.User).all()
 
 
 @router.get("/{user_id}", response_model=schemas.UserOut)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -436,7 +516,12 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}", response_model=schemas.UserOut)
-def update_user(user_id: int, user_in: schemas.UserUpdate, db: Session = Depends(get_db)):
+def update_user(
+    user_id: int,
+    user_in: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -454,7 +539,11 @@ def update_user(user_id: int, user_in: schemas.UserUpdate, db: Session = Depends
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

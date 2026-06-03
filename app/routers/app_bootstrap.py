@@ -85,6 +85,7 @@ def get_app_bootstrap(
         .order_by(models.RoomItem.item_type, models.RoomItem.price, models.RoomItem.item_id)
         .all()
     )
+    preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == current_user.user_id).first()
 
     return {
         "user": current_user,
@@ -96,7 +97,7 @@ def get_app_bootstrap(
             for item in shop_items
         ],
         "tutorial_flags": {
-            "has_seen_game_tutorial": False,
-            "has_seen_minigame_tutorial": False,
+            "has_seen_game_tutorial": preference.has_seen_game_tutorial if preference else False,
+            "has_seen_minigame_tutorial": preference.has_seen_minigame_tutorial if preference else False,
         },
     }

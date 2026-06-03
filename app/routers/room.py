@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_user
 
@@ -293,7 +294,10 @@ def update_guestbook_entry(
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Guestbook entry not found")
     if entry.writer_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only writer can update this entry")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail("NOT_OWNER", "작성자만 수정할 수 있습니다."),
+        )
 
     entry.content = entry_in.content
     db.commit()
@@ -311,7 +315,10 @@ def delete_guestbook_entry(
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Guestbook entry not found")
     if entry.writer_id != current_user.user_id and entry.room_owner_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only writer or room owner can delete this entry")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail("NOT_OWNER", "작성자 또는 방 주인만 삭제할 수 있습니다."),
+        )
 
     db.delete(entry)
     db.commit()

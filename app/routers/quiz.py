@@ -6,8 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.errors import error_detail
 from ..database import get_db
-from .user import get_current_user
+from .user import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
@@ -88,7 +89,11 @@ def get_quiz_play_status(db: Session, user_id: int, now: datetime) -> dict:
 
 
 @router.post("/", response_model=schemas.Quiz)
-def create_quiz(quiz_in: schemas.QuizCreate, db: Session = Depends(get_db)):
+def create_quiz(
+    quiz_in: schemas.QuizCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     quiz = models.Quiz(**quiz_in.dict())
     db.add(quiz)
     db.commit()
@@ -97,7 +102,10 @@ def create_quiz(quiz_in: schemas.QuizCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[schemas.Quiz])
-def list_quizzes(db: Session = Depends(get_db)):
+def list_quizzes(
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     return db.query(models.Quiz).all()
 
 
@@ -153,11 +161,18 @@ def submit_quiz(
     now = get_kst_now()
     play_status = get_quiz_play_status(db, current_user.user_id, now)
     if play_status["remaining_today"] <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Daily quiz limit reached")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("DAILY_LIMIT_EXCEEDED", "오늘 풀 수 있는 퀴즈를 모두 풀었습니다."),
+        )
     if not play_status["can_play_now"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Quiz cooldown is still active",
+            detail=error_detail(
+                "QUIZ_COOLDOWN",
+                "퀴즈 쿨타임이 아직 끝나지 않았습니다.",
+                {"next_available_at": play_status["next_available_at"]},
+            ),
         )
 
     quiz = db.query(models.Quiz).filter(models.Quiz.quiz_id == submit_in.quiz_id).first()
@@ -194,7 +209,11 @@ def submit_quiz(
 
 
 @router.get("/{quiz_id}", response_model=schemas.Quiz)
-def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
+def get_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     quiz = db.query(models.Quiz).filter(models.Quiz.quiz_id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -202,7 +221,12 @@ def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{quiz_id}", response_model=schemas.Quiz)
-def update_quiz(quiz_id: int, quiz_in: schemas.QuizUpdate, db: Session = Depends(get_db)):
+def update_quiz(
+    quiz_id: int,
+    quiz_in: schemas.QuizUpdate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     quiz = db.query(models.Quiz).filter(models.Quiz.quiz_id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -214,7 +238,11 @@ def update_quiz(quiz_id: int, quiz_in: schemas.QuizUpdate, db: Session = Depends
 
 
 @router.delete("/{quiz_id}")
-def delete_quiz(quiz_id: int, db: Session = Depends(get_db)):
+def delete_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     quiz = db.query(models.Quiz).filter(models.Quiz.quiz_id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")

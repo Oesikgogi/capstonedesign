@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -49,6 +49,7 @@ class UserOut(UserBase):
     heart_updated_at: Optional[datetime] = None
     email_verified: bool
     email_verified_at: Optional[datetime] = None
+    is_admin: bool = False
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -99,6 +100,40 @@ class PasswordResetRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class ProfileImageRequest(BaseModel):
+    image_url: str
+
+
+class ProfileImageOut(BaseModel):
+    image: Optional[str] = None
+
+
+class UserPreferenceOut(BaseModel):
+    has_seen_game_tutorial: bool = False
+    has_seen_minigame_tutorial: bool = False
+    bgm_volume: Optional[float] = None
+    sfx_volume: Optional[float] = None
+    master_volume: Optional[float] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserPreferenceUpdate(BaseModel):
+    has_seen_game_tutorial: Optional[bool] = None
+    has_seen_minigame_tutorial: Optional[bool] = None
+    bgm_volume: Optional[float] = None
+    sfx_volume: Optional[float] = None
+    master_volume: Optional[float] = None
+
+    @field_validator("bgm_volume", "sfx_volume", "master_volume")
+    @classmethod
+    def validate_volume(cls, value):
+        if value is not None and not 0 <= value <= 1:
+            raise ValueError("Volume must be between 0 and 1")
+        return value
 
 
 QuizOptions = Union[List[str], Dict[str, str]]
@@ -332,6 +367,31 @@ class FriendOut(BaseModel):
     friend: FriendUser
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FriendRequestCreate(BaseModel):
+    student_id: str
+
+    @field_validator("student_id", mode="before")
+    @classmethod
+    def normalize_student_id(cls, value):
+        return str(value)
+
+
+class FriendRequestOut(BaseModel):
+    request_id: int
+    status: str
+    created_at: datetime
+    responded_at: Optional[datetime] = None
+    requester: FriendUser
+    receiver: FriendUser
+
+
+class FriendDetail(BaseModel):
+    friend: FriendUser
+    character: Optional["RoomCharacterOut"] = None
+    room_owner_id: int
+    room: "RoomView"
 
 
 class EconomyStatus(BaseModel):
@@ -622,3 +682,9 @@ class AppConfig(BaseModel):
     quiz: AppConfigQuiz
     minigame: AppConfigMinigame
     school_food: AppConfigSchoolFood
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    meta: dict = Field(default_factory=dict)

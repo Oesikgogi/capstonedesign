@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_user
 
@@ -88,7 +89,10 @@ def start_minigame(
     sync_user_hearts(current_user, now)
     if current_user.heart < MINIGAME_HEART_COST:
         db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough hearts")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("NOT_ENOUGH_HEART", "하트가 부족합니다."),
+        )
 
     current_user.heart -= MINIGAME_HEART_COST
     current_user.heart_updated_at = now
@@ -131,7 +135,10 @@ def reward_minigame(
     if not play_session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mini game session not found")
     if play_session.rewarded:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mini game reward already granted")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("ALREADY_REWARDED", "이미 보상을 받은 미니게임입니다."),
+        )
     if play_session.game_type != reward_in.game_type or play_session.mode != reward_in.mode:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mini game session mismatch")
 
@@ -156,7 +163,10 @@ def play_minigame(
     sync_user_hearts(current_user, now)
     if current_user.heart < MINIGAME_HEART_COST:
         db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough hearts")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("NOT_ENOUGH_HEART", "하트가 부족합니다."),
+        )
 
     current_user.heart -= MINIGAME_HEART_COST
     current_user.heart_updated_at = now

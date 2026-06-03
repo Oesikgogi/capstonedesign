@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from .user import get_current_user
+from .user import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/characters", tags=["characters"])
 
@@ -192,7 +192,11 @@ def apply_my_character_meal_penalty(
 
 
 @router.post("/", response_model=schemas.Character)
-def create_character(character_in: schemas.CharacterCreate, db: Session = Depends(get_db)):
+def create_character(
+    character_in: schemas.CharacterCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     character = models.Character(**character_in.dict())
     db.add(character)
     db.commit()
@@ -201,12 +205,19 @@ def create_character(character_in: schemas.CharacterCreate, db: Session = Depend
 
 
 @router.get("/", response_model=list[schemas.Character])
-def list_characters(db: Session = Depends(get_db)):
+def list_characters(
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     return db.query(models.Character).all()
 
 
 @router.get("/{character_id}", response_model=schemas.Character)
-def get_character(character_id: int, db: Session = Depends(get_db)):
+def get_character(
+    character_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     character = db.query(models.Character).filter(models.Character.character_id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -214,7 +225,12 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{character_id}", response_model=schemas.Character)
-def update_character(character_id: int, character_in: schemas.CharacterUpdate, db: Session = Depends(get_db)):
+def update_character(
+    character_id: int,
+    character_in: schemas.CharacterUpdate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     character = db.query(models.Character).filter(models.Character.character_id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -226,7 +242,11 @@ def update_character(character_id: int, character_in: schemas.CharacterUpdate, d
 
 
 @router.delete("/{character_id}")
-def delete_character(character_id: int, db: Session = Depends(get_db)):
+def delete_character(
+    character_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     character = db.query(models.Character).filter(models.Character.character_id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")

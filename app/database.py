@@ -59,6 +59,7 @@ def ensure_runtime_schema():
         "coin": "INTEGER DEFAULT 0",
         "heart": "INTEGER DEFAULT 5",
         "heart_updated_at": "TIMESTAMP",
+        "is_admin": "BOOLEAN DEFAULT FALSE",
     }
 
     with engine.begin() as connection:
@@ -69,6 +70,7 @@ def ensure_runtime_schema():
         connection.execute(text("UPDATE users SET coin = 0 WHERE coin IS NULL"))
         connection.execute(text("UPDATE users SET heart = 5 WHERE heart IS NULL"))
         connection.execute(text("UPDATE users SET heart_updated_at = CURRENT_TIMESTAMP WHERE heart_updated_at IS NULL"))
+        connection.execute(text("UPDATE users SET is_admin = FALSE WHERE is_admin IS NULL"))
 
     if "minigame_results" in table_names:
         existing_minigame_columns = {column["name"] for column in inspector.get_columns("minigame_results")}

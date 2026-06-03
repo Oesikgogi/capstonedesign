@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from .user import get_current_user
+from .user import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/shop", tags=["shop"])
 
@@ -56,7 +56,11 @@ def list_shop_item_types():
 
 
 @router.post("/items", response_model=schemas.RoomItemOut, status_code=status.HTTP_201_CREATED)
-def create_room_item(item_in: schemas.RoomItemCreate, db: Session = Depends(get_db)):
+def create_room_item(
+    item_in: schemas.RoomItemCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user),
+):
     item_data = item_in.dict()
     item = models.RoomItem(**item_data)
     db.add(item)

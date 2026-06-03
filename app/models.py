@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -18,6 +18,7 @@ class User(Base):
     password = Column(String, nullable=False)
     email_verified = Column(Boolean, default=False)
     email_verified_at = Column(DateTime, nullable=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     xp_point = Column(Integer, default=0)
     coin = Column(Integer, default=0)
@@ -37,6 +38,36 @@ class User(Base):
     minigame_results = relationship("MiniGameResult", back_populates="user", cascade="all, delete-orphan")
     owned_room_items = relationship("UserRoomItem", back_populates="user", cascade="all, delete-orphan")
     equipped_room_items = relationship("UserRoomEquipped", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    preference_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), unique=True, nullable=False)
+    has_seen_game_tutorial = Column(Boolean, default=False)
+    has_seen_minigame_tutorial = Column(Boolean, default=False)
+    bgm_volume = Column(Float, nullable=True)
+    sfx_volume = Column(Float, nullable=True)
+    master_volume = Column(Float, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class FriendRequest(Base):
+    __tablename__ = "friend_requests"
+    __table_args__ = (UniqueConstraint("requester_id", "receiver_id", name="uq_friend_request_once"),)
+
+    request_id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    status = Column(String, default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    responded_at = Column(DateTime, nullable=True)
+
+    requester = relationship("User", foreign_keys=[requester_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
 
 
 class Quiz(Base):
