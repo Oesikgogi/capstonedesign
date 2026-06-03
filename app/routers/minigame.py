@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -17,10 +19,13 @@ def create_minigame_result(
 ):
     result = models.MiniGameResult(
         user_id=current_user.user_id,
+        play_session_id=result_in.play_session_id,
         game_type=result_in.game_type,
+        mode=result_in.mode,
         location=result_in.location,
         score=result_in.score,
         success=result_in.success,
+        ended_reason=result_in.ended_reason,
         play_time_seconds=result_in.play_time_seconds,
     )
     db.add(result)
@@ -42,20 +47,26 @@ def list_my_minigame_results(
     )
 
 
+def get_best_scores_subquery(db: Session, game_type: Optional[str], mode: Optional[str]):
+    query = db.query(
+        models.MiniGameResult.user_id.label("user_id"),
+        func.max(models.MiniGameResult.score).label("best_score"),
+    )
+    if game_type:
+        query = query.filter(models.MiniGameResult.game_type == game_type)
+    if mode:
+        query = query.filter(models.MiniGameResult.mode == mode)
+    return query.group_by(models.MiniGameResult.user_id).subquery()
+
+
 @router.get("/ranking/me", response_model=schemas.MiniGameRankingMe)
 def get_my_minigame_ranking(
+    game_type: Optional[str] = None,
+    mode: Optional[str] = None,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    best_scores = (
-        db.query(
-            models.MiniGameResult.user_id.label("user_id"),
-            func.max(models.MiniGameResult.score).label("best_score"),
-        )
-        .group_by(models.MiniGameResult.user_id)
-        .subquery()
-    )
-
+    best_scores = get_best_scores_subquery(db, game_type, mode)
     my_best_score = (
         db.query(best_scores.c.best_score)
         .filter(best_scores.c.user_id == current_user.user_id)
@@ -83,4 +94,86 @@ def get_my_minigame_ranking(
         "best_score": my_best_score,
         "total_ranked_users": total_ranked_users,
         "total_users": total_users,
+    }
+
+
+def build_ranking_list(
+    db: Session,
+    best_scores,
+    limit: int,
+    friend_user_ids: Optional[set[int]] = None,
+) -> list[dict]:
+    query = (
+        db.query(
+            models.User.user_id,
+            models.User.student_id,
+            models.User.nickname,
+            models.User.image,
+            best_scores.c.best_score,
+        )
+        .join(best_scores, best_scores.c.user_id == models.User.user_id)
+        .order_by(best_scores.c.best_score.desc(), models.User.user_id.asc())
+    )
+    if friend_user_ids is not None:
+        query = query.filter(models.User.user_id.in_(friend_user_ids))
+
+    rows = query.limit(limit).all()
+    return [
+        {
+            "user_id": row.user_id,
+            "student_id": row.student_id,
+            "nickname": row.nickname,
+            "image": row.image,
+            "rank": index + 1,
+            "best_score": row.best_score,
+        }
+        for index, row in enumerate(rows)
+    ]
+
+
+@router.get("/rankings", response_model=schemas.MiniGameRankingList)
+def list_minigame_rankings(
+    game_type: Optional[str] = None,
+    mode: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=100),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    best_scores = get_best_scores_subquery(db, game_type, mode)
+    total_ranked_users = db.query(best_scores.c.user_id).count()
+    return {
+        "game_type": game_type,
+        "mode": mode,
+        "total_ranked_users": total_ranked_users,
+        "rankings": build_ranking_list(db, best_scores, limit),
+    }
+
+
+@router.get("/rankings/friends", response_model=schemas.MiniGameRankingList)
+def list_friend_minigame_rankings(
+    game_type: Optional[str] = None,
+    mode: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=100),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    friend_user_ids = {
+        row.friend_user_id
+        for row in db.query(models.Friend.friend_user_id)
+        .filter(models.Friend.user_id == current_user.user_id)
+        .all()
+    }
+    friend_user_ids.add(current_user.user_id)
+
+    best_scores = get_best_scores_subquery(db, game_type, mode)
+    total_ranked_users = (
+        db.query(best_scores.c.user_id)
+        .filter(best_scores.c.user_id.in_(friend_user_ids))
+        .count()
+    )
+    return {
+        "game_type": game_type,
+        "mode": mode,
+        "total_ranked_users": total_ranked_users,
+        "rankings": build_ranking_list(db, best_scores, limit, friend_user_ids),
     }

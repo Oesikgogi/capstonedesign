@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
@@ -119,14 +120,32 @@ class MiniGameResult(Base):
 
     result_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    play_session_id = Column(String, nullable=True, index=True)
     game_type = Column(String, nullable=True)
+    mode = Column(String, nullable=True)
     location = Column(String, nullable=True)
     score = Column(Integer, nullable=False, default=0)
     success = Column(Boolean, default=False)
+    ended_reason = Column(String, nullable=True)
     play_time_seconds = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="minigame_results")
+
+
+class MiniGamePlaySession(Base):
+    __tablename__ = "minigame_play_sessions"
+
+    play_session_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    game_type = Column(String, nullable=False)
+    mode = Column(String, nullable=False, default="normal")
+    spent_heart = Column(Integer, nullable=False, default=1)
+    rewarded = Column(Boolean, default=False)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    rewarded_at = Column(DateTime, nullable=True)
+
+    user = relationship("User")
 
 
 class RoomItem(Base):

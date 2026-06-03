@@ -50,7 +50,8 @@ def get_db():
 
 def ensure_runtime_schema():
     inspector = inspect(engine)
-    if "users" not in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+    if "users" not in table_names:
         return
 
     existing_user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -68,3 +69,15 @@ def ensure_runtime_schema():
         connection.execute(text("UPDATE users SET coin = 0 WHERE coin IS NULL"))
         connection.execute(text("UPDATE users SET heart = 5 WHERE heart IS NULL"))
         connection.execute(text("UPDATE users SET heart_updated_at = CURRENT_TIMESTAMP WHERE heart_updated_at IS NULL"))
+
+    if "minigame_results" in table_names:
+        existing_minigame_columns = {column["name"] for column in inspector.get_columns("minigame_results")}
+        required_minigame_columns = {
+            "play_session_id": "VARCHAR",
+            "mode": "VARCHAR",
+            "ended_reason": "VARCHAR",
+        }
+        with engine.begin() as connection:
+            for column_name, column_type in required_minigame_columns.items():
+                if column_name not in existing_minigame_columns:
+                    connection.execute(text(f"ALTER TABLE minigame_results ADD COLUMN {column_name} {column_type}"))

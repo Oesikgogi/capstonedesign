@@ -278,6 +278,9 @@ class EconomyStatus(BaseModel):
     coin: int
     heart: int
     max_heart: int
+    heart_updated_at: Optional[datetime] = None
+    next_heart_at: Optional[datetime] = None
+    server_time: datetime
 
 
 class MiniGamePlayResult(BaseModel):
@@ -287,13 +290,51 @@ class MiniGamePlayResult(BaseModel):
     coin: int
     heart: int
     max_heart: int
+    heart_updated_at: Optional[datetime] = None
+    next_heart_at: Optional[datetime] = None
+
+
+class MiniGameStartRequest(BaseModel):
+    game_type: str
+    mode: str = "normal"
+
+
+class MiniGameStartResult(BaseModel):
+    play_session_id: str
+    spent_heart: int
+    heart: int
+    max_heart: int
+    heart_updated_at: Optional[datetime] = None
+    next_heart_at: Optional[datetime] = None
+
+
+class MiniGameRewardRequest(BaseModel):
+    play_session_id: str
+    game_type: str
+    mode: str = "normal"
+    score: int
+
+    @field_validator("score")
+    @classmethod
+    def validate_score(cls, value):
+        if value < 0:
+            raise ValueError("Score must be 0 or greater")
+        return value
+
+
+class MiniGameRewardResult(BaseModel):
+    awarded_coin: int
+    coin: int
 
 
 class MiniGameResultCreate(BaseModel):
     score: int
     success: Optional[bool] = False
+    play_session_id: Optional[str] = None
     game_type: Optional[str] = None
+    mode: Optional[str] = None
     location: Optional[str] = None
+    ended_reason: Optional[str] = None
     play_time_seconds: Optional[int] = None
 
     @field_validator("score")
@@ -314,10 +355,13 @@ class MiniGameResultCreate(BaseModel):
 class MiniGameResultOut(BaseModel):
     result_id: int
     user_id: int
+    play_session_id: Optional[str] = None
     game_type: Optional[str] = None
+    mode: Optional[str] = None
     location: Optional[str] = None
     score: int
     success: bool
+    ended_reason: Optional[str] = None
     play_time_seconds: Optional[int] = None
     created_at: datetime
 
@@ -329,6 +373,22 @@ class MiniGameRankingMe(BaseModel):
     best_score: Optional[int] = None
     total_ranked_users: int
     total_users: int
+
+
+class MiniGameRankingUser(BaseModel):
+    user_id: int
+    student_id: str
+    nickname: str
+    image: Optional[str] = None
+    rank: int
+    best_score: int
+
+
+class MiniGameRankingList(BaseModel):
+    game_type: Optional[str] = None
+    mode: Optional[str] = None
+    total_ranked_users: int
+    rankings: list[MiniGameRankingUser]
 
 
 class RoomItemBase(BaseModel):
@@ -407,6 +467,20 @@ class RoomEquippedItemOut(BaseModel):
 class RoomView(BaseModel):
     owner: FriendUser
     equipped_items: list[RoomEquippedItemOut]
+
+
+class TutorialFlags(BaseModel):
+    has_seen_game_tutorial: bool = False
+    has_seen_minigame_tutorial: bool = False
+
+
+class AppBootstrap(BaseModel):
+    user: UserOut
+    economy: EconomyStatus
+    character: Optional[Character] = None
+    room: RoomView
+    shop_items: list[ShopItemOut]
+    tutorial_flags: TutorialFlags
 
 
 class GuestbookCreate(BaseModel):
