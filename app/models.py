@@ -70,6 +70,54 @@ class FriendRequest(Base):
     receiver = relationship("User", foreign_keys=[receiver_id])
 
 
+class UserAchievementCounter(Base):
+    __tablename__ = "user_achievement_counters"
+
+    counter_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), unique=True, nullable=False)
+    feed_count = Column(Integer, default=0)
+    quiz_correct_count = Column(Integer, default=0)
+    friend_count = Column(Integer, default=0)
+    minigame_play_count = Column(Integer, default=0)
+    room_item_equip_count = Column(Integer, default=0)
+    achievement_completed_count = Column(Integer, default=0)
+    total_xp = Column(Integer, default=0)
+    has_entered_room = Column(Boolean, default=False)
+    has_visited_campus = Column(Boolean, default=False)
+    has_first_login = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+    __table_args__ = (UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement_once"),)
+
+    user_achievement_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    achievement_key = Column(String, nullable=False)
+    completed = Column(Boolean, default=True)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+    claimed = Column(Boolean, default=True)
+
+    user = relationship("User")
+
+
+class UserSkin(Base):
+    __tablename__ = "user_skins"
+    __table_args__ = (UniqueConstraint("user_id", "skin_key", name="uq_user_skin_once"),)
+
+    user_skin_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    skin_key = Column(String, nullable=False)
+    owned = Column(Boolean, default=True)
+    acquired_from = Column(String, nullable=True)
+    acquired_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
 class Quiz(Base):
     __tablename__ = "quizzes"
 

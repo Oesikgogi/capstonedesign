@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import apply_achievement_event
 from ..database import get_db
 from .user import get_current_admin_user, get_current_user
 
@@ -187,6 +188,7 @@ def feed_school_food(
         awarded_xp=FEED_XP,
     )
     db.add(feed_record)
+    unlocked_achievements = apply_achievement_event(db, current_user, "feed")
     db.commit()
     db.refresh(feed_record)
     db.refresh(current_user)
@@ -201,6 +203,7 @@ def feed_school_food(
         "xp_point": current_user.xp_point,
         "coin": current_user.coin,
         "fed_at": feed_record.fed_at,
+        "unlocked_achievements": unlocked_achievements,
     }
 
 

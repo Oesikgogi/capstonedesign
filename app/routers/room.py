@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import apply_achievement_event
 from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_user
@@ -105,13 +106,19 @@ def serialize_character(owner: models.User, character: Optional[models.Character
     }
 
 
-def serialize_room(owner: models.User, equipped_items: list[models.UserRoomEquipped], db: Session) -> dict:
+def serialize_room(
+    owner: models.User,
+    equipped_items: list[models.UserRoomEquipped],
+    db: Session,
+    unlocked_achievements: list[dict] | None = None,
+) -> dict:
     wallpaper_equipped = next((item for item in equipped_items if item.item_type == "room"), None)
     return {
         "owner": serialize_owner(owner),
         "character": serialize_character(owner, get_primary_character(db, owner.user_id)),
         "wallpaper": serialize_room_item(wallpaper_equipped.item) if wallpaper_equipped else None,
         "equipped_items": [serialize_equipped_item(item) for item in equipped_items],
+        "unlocked_achievements": unlocked_achievements or [],
     }
 
 
@@ -169,6 +176,7 @@ def equip_room_item(
         )
         db.add(equipped_item)
 
+    unlocked_achievements = apply_achievement_event(db, current_user, "room_item_equip")
     db.commit()
     db.refresh(current_user)
     equipped_items = (
@@ -177,7 +185,7 @@ def equip_room_item(
         .order_by(models.UserRoomEquipped.item_type)
         .all()
     )
-    return serialize_room(current_user, equipped_items, db)
+    return serialize_room(current_user, equipped_items, db, unlocked_achievements)
 
 
 @router.delete("/me/equip/{slot}", response_model=schemas.RoomView)

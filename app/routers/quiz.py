@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import apply_achievement_event, evaluate_achievements
 from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_admin_user, get_current_user
@@ -194,6 +195,11 @@ def submit_quiz(
         user_quiz_time=now,
     )
     db.add(solved_record)
+    unlocked_achievements = (
+        apply_achievement_event(db, current_user, "quiz_correct")
+        if correct
+        else evaluate_achievements(db, current_user)
+    )
     db.commit()
     db.refresh(current_user)
 
@@ -205,6 +211,7 @@ def submit_quiz(
         "xp_point": current_user.xp_point,
         "coin": current_user.coin,
         "correct_answer": quiz.answer,
+        "unlocked_achievements": unlocked_achievements,
     }
 
 

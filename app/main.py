@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .database import Base, engine, ensure_runtime_schema
-from .routers import app_bootstrap, character, economy, friend, minigame, quiz, room, school_food, shop, user, user_quiz_connect
+from .routers import achievement, app_bootstrap, character, economy, friend, minigame, quiz, room, school_food, shop, user, user_quiz_connect
 
 Base.metadata.create_all(bind=engine)
 ensure_runtime_schema()
@@ -48,6 +48,7 @@ app.include_router(shop.router)
 app.include_router(room.router)
 app.include_router(user_quiz_connect.router)
 app.include_router(app_bootstrap.router)
+app.include_router(achievement.router)
 
 @app.get("/")
 def root():

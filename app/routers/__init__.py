@@ -1,3 +1,4 @@
+from . import achievement
 from . import app_bootstrap
 from . import character
 from . import economy

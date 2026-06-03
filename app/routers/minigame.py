@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import evaluate_achievements
 from ..database import get_db
 from .user import get_current_user
 
@@ -29,9 +30,23 @@ def create_minigame_result(
         play_time_seconds=result_in.play_time_seconds,
     )
     db.add(result)
+    unlocked_achievements = evaluate_achievements(db, current_user)
     db.commit()
     db.refresh(result)
-    return result
+    return {
+        "result_id": result.result_id,
+        "user_id": result.user_id,
+        "play_session_id": result.play_session_id,
+        "game_type": result.game_type,
+        "mode": result.mode,
+        "location": result.location,
+        "score": result.score,
+        "success": result.success,
+        "ended_reason": result.ended_reason,
+        "play_time_seconds": result.play_time_seconds,
+        "created_at": result.created_at,
+        "unlocked_achievements": unlocked_achievements,
+    }
 
 
 @router.get("/results/me", response_model=list[schemas.MiniGameResultOut])

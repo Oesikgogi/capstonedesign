@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import evaluate_achievements
 from ..database import get_db
 from .user import get_current_admin_user, get_current_user
 
@@ -128,6 +129,7 @@ def add_my_character_xp(
     current_user.xp_point = max(0, current_user.xp_point + xp_in.amount)
     if current_user.xp_point >= character.stage * EVOLUTION_XP_UNIT:
         character.pending_evolution = True
+    unlocked_achievements = evaluate_achievements(db, current_user)
     db.commit()
     db.refresh(current_user)
     db.refresh(character)
@@ -136,6 +138,7 @@ def add_my_character_xp(
         "added_xp": xp_in.amount,
         "stage": character.stage,
         "pending_evolution": character.pending_evolution,
+        "unlocked_achievements": unlocked_achievements,
     }
 
 
@@ -185,8 +188,13 @@ def apply_my_character_meal_penalty(
     db.commit()
     db.refresh(current_user)
     db.refresh(character)
+    unlocked_achievements = evaluate_achievements(db, current_user)
     status_data = sync_meal_health(db, character, current_user, now)
-    status_data.update({"applied_penalty": applied_penalty, "xp_point": current_user.xp_point})
+    status_data.update({
+        "applied_penalty": applied_penalty,
+        "xp_point": current_user.xp_point,
+        "unlocked_achievements": unlocked_achievements,
+    })
     db.commit()
     return status_data
 

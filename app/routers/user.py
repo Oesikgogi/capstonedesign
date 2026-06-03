@@ -12,6 +12,7 @@ from ..core.email import (
     send_signup_verification_code,
     send_password_reset,
 )
+from ..core.achievements import apply_achievement_event
 from ..core.errors import error_detail
 from ..core.security import (
     create_access_token,
@@ -252,12 +253,14 @@ def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
         expires_at=datetime.utcfromtimestamp(refresh_payload["exp"]),
     )
     db.add(db_token)
+    unlocked_achievements = apply_achievement_event(db, user, "first_login")
     db.commit()
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "refresh_token": refresh_token,
+        "unlocked_achievements": unlocked_achievements,
     }
 
 
@@ -475,7 +478,11 @@ def delete_current_user(
     ).delete(synchronize_session=False)
     db.query(models.RefreshToken).filter(models.RefreshToken.user_id == current_user.user_id).delete()
     db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == current_user.user_id).delete()
+    db.query(models.MiniGamePlaySession).filter(models.MiniGamePlaySession.user_id == current_user.user_id).delete()
     db.query(models.UserPreference).filter(models.UserPreference.user_id == current_user.user_id).delete()
+    db.query(models.UserAchievementCounter).filter(models.UserAchievementCounter.user_id == current_user.user_id).delete()
+    db.query(models.UserAchievement).filter(models.UserAchievement.user_id == current_user.user_id).delete()
+    db.query(models.UserSkin).filter(models.UserSkin.user_id == current_user.user_id).delete()
     db.query(models.FriendRequest).filter(
         (models.FriendRequest.requester_id == current_user.user_id)
         | (models.FriendRequest.receiver_id == current_user.user_id)

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import apply_achievement_event
 from ..core.errors import error_detail
 from ..database import get_db
 from .room import serialize_room
@@ -12,11 +13,12 @@ from .user import get_current_user, validate_student_id
 router = APIRouter(prefix="/friends", tags=["friends"])
 
 
-def serialize_friend(friend: models.Friend) -> dict:
+def serialize_friend(friend: models.Friend, unlocked_achievements: list[dict] | None = None) -> dict:
     return {
         "friend_id": friend.friend_id,
         "created_at": friend.created_at,
         "friend": friend.friend_user,
+        "unlocked_achievements": unlocked_achievements or [],
     }
 
 
@@ -37,7 +39,10 @@ def create_friend_if_missing(db: Session, user_id: int, friend_user_id: int) -> 
         db.add(models.Friend(user_id=user_id, friend_user_id=friend_user_id))
 
 
-def serialize_friend_request(friend_request: models.FriendRequest) -> dict:
+def serialize_friend_request(
+    friend_request: models.FriendRequest,
+    unlocked_achievements: list[dict] | None = None,
+) -> dict:
     return {
         "request_id": friend_request.request_id,
         "status": friend_request.status,
@@ -45,6 +50,7 @@ def serialize_friend_request(friend_request: models.FriendRequest) -> dict:
         "responded_at": friend_request.responded_at,
         "requester": friend_request.requester,
         "receiver": friend_request.receiver,
+        "unlocked_achievements": unlocked_achievements or [],
     }
 
 
@@ -113,9 +119,10 @@ def add_friend(
         friend_user_id=friend_user.user_id,
     )
     db.add(friend)
+    unlocked_achievements = apply_achievement_event(db, current_user, "friend")
     db.commit()
     db.refresh(friend)
-    return serialize_friend(friend)
+    return serialize_friend(friend, unlocked_achievements)
 
 
 @router.get("/requests", response_model=list[schemas.FriendRequestOut])
@@ -184,9 +191,11 @@ def create_friend_request(
         reverse_request.responded_at = datetime.utcnow()
         create_friend_if_missing(db, current_user.user_id, receiver.user_id)
         create_friend_if_missing(db, receiver.user_id, current_user.user_id)
+        unlocked_achievements = apply_achievement_event(db, current_user, "friend")
+        apply_achievement_event(db, receiver, "friend")
         db.commit()
         db.refresh(reverse_request)
-        return serialize_friend_request(reverse_request)
+        return serialize_friend_request(reverse_request, unlocked_achievements)
 
     friend_request = models.FriendRequest(
         requester_id=current_user.user_id,
@@ -220,9 +229,11 @@ def accept_friend_request(
     friend_request.responded_at = datetime.utcnow()
     create_friend_if_missing(db, friend_request.requester_id, friend_request.receiver_id)
     create_friend_if_missing(db, friend_request.receiver_id, friend_request.requester_id)
+    unlocked_achievements = apply_achievement_event(db, current_user, "friend")
+    apply_achievement_event(db, friend_request.requester, "friend")
     db.commit()
     db.refresh(friend_request)
-    return serialize_friend_request(friend_request)
+    return serialize_friend_request(friend_request, unlocked_achievements)
 
 
 @router.delete("/requests/{request_id}")

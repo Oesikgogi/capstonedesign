@@ -87,6 +87,7 @@ class Token(BaseModel):
 
 class TokenWithRefresh(Token):
     refresh_token: str
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class RefreshRequest(BaseModel):
@@ -185,6 +186,7 @@ class QuizSubmitResult(BaseModel):
     xp_point: int
     coin: int
     correct_answer: str
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class QuizPlayStatus(BaseModel):
@@ -268,6 +270,7 @@ class CharacterXpResult(BaseModel):
     added_xp: int
     stage: int
     pending_evolution: bool
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class CharacterMealHealth(BaseModel):
@@ -281,6 +284,7 @@ class CharacterMealHealth(BaseModel):
 class CharacterMealPenaltyResult(CharacterMealHealth):
     applied_penalty: int
     xp_point: int
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class SchoolFoodBase(BaseModel):
@@ -332,6 +336,7 @@ class SchoolFoodFeedResult(BaseModel):
     xp_point: int
     coin: int
     fed_at: datetime
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class SchoolFoodFeedStatus(BaseModel):
@@ -365,6 +370,7 @@ class FriendOut(BaseModel):
     friend_id: int
     created_at: datetime
     friend: FriendUser
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -385,6 +391,7 @@ class FriendRequestOut(BaseModel):
     responded_at: Optional[datetime] = None
     requester: FriendUser
     receiver: FriendUser
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class FriendDetail(BaseModel):
@@ -412,6 +419,7 @@ class MiniGamePlayResult(BaseModel):
     max_heart: int
     heart_updated_at: Optional[datetime] = None
     next_heart_at: Optional[datetime] = None
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class MiniGameStartRequest(BaseModel):
@@ -426,6 +434,7 @@ class MiniGameStartResult(BaseModel):
     max_heart: int
     heart_updated_at: Optional[datetime] = None
     next_heart_at: Optional[datetime] = None
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class MiniGameRewardRequest(BaseModel):
@@ -445,6 +454,7 @@ class MiniGameRewardRequest(BaseModel):
 class MiniGameRewardResult(BaseModel):
     awarded_coin: int
     coin: int
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class MiniGameResultCreate(BaseModel):
@@ -484,6 +494,7 @@ class MiniGameResultOut(BaseModel):
     ended_reason: Optional[str] = None
     play_time_seconds: Optional[int] = None
     created_at: datetime
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -608,6 +619,7 @@ class RoomView(BaseModel):
     character: Optional[RoomCharacterOut] = None
     wallpaper: Optional[RoomItemOut] = None
     equipped_items: list[RoomEquippedItemOut]
+    unlocked_achievements: list["UnlockedAchievement"] = Field(default_factory=list)
 
 
 class TutorialFlags(BaseModel):
@@ -682,6 +694,43 @@ class AppConfig(BaseModel):
     quiz: AppConfigQuiz
     minigame: AppConfigMinigame
     school_food: AppConfigSchoolFood
+
+
+class AchievementMaster(BaseModel):
+    achievement_key: str
+    title: str
+    condition_type: str
+    target_value: int
+    reward_type: str
+    reward_value: Optional[int] = None
+    reward_item_key: Optional[str] = None
+    sort_order: int
+
+
+class AchievementProgress(AchievementMaster):
+    progress_value: int
+    completed: bool
+    completed_at: Optional[datetime] = None
+    claimed: bool
+
+
+class UnlockedAchievement(BaseModel):
+    achievement_key: str
+    title: str
+    reward_type: str
+    reward_value: Optional[int] = None
+    reward_item_key: Optional[str] = None
+
+
+class AchievementEventRequest(BaseModel):
+    event_type: str
+
+
+class AchievementEventResult(BaseModel):
+    event_type: str
+    coin: int
+    xp_point: int
+    unlocked_achievements: list[UnlockedAchievement]
 
 
 class ErrorResponse(BaseModel):

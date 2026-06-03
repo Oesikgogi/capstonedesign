@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..core.achievements import apply_achievement_event, evaluate_achievements
 from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_user
@@ -104,6 +105,7 @@ def start_minigame(
         started_at=now,
     )
     db.add(play_session)
+    unlocked_achievements = apply_achievement_event(db, current_user, "minigame_play")
     db.commit()
     db.refresh(current_user)
     db.refresh(play_session)
@@ -115,6 +117,7 @@ def start_minigame(
         "max_heart": MAX_HEART,
         "heart_updated_at": current_user.heart_updated_at,
         "next_heart_at": get_next_heart_at(current_user),
+        "unlocked_achievements": unlocked_achievements,
     }
 
 
@@ -145,12 +148,14 @@ def reward_minigame(
     play_session.rewarded = True
     play_session.rewarded_at = get_kst_now()
     current_user.coin += MINIGAME_COIN_REWARD
+    unlocked_achievements = evaluate_achievements(db, current_user)
 
     db.commit()
     db.refresh(current_user)
     return {
         "awarded_coin": MINIGAME_COIN_REWARD,
         "coin": current_user.coin,
+        "unlocked_achievements": unlocked_achievements,
     }
 
 
@@ -171,6 +176,7 @@ def play_minigame(
     current_user.heart -= MINIGAME_HEART_COST
     current_user.heart_updated_at = now
     current_user.coin += MINIGAME_COIN_REWARD
+    unlocked_achievements = apply_achievement_event(db, current_user, "minigame_play")
 
     db.commit()
     db.refresh(current_user)
@@ -183,4 +189,5 @@ def play_minigame(
         "max_heart": MAX_HEART,
         "heart_updated_at": current_user.heart_updated_at,
         "next_heart_at": get_next_heart_at(current_user),
+        "unlocked_achievements": unlocked_achievements,
     }
