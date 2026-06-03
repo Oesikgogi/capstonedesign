@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -35,6 +35,21 @@ def get_today_food_type(now: datetime) -> str:
     return "weekend" if now.weekday() >= 5 else "weekday"
 
 
+def get_next_slot_at(now: datetime, fed_slots: list[str]) -> Optional[datetime]:
+    slot_times = [
+        ("breakfast", time(8, 0)),
+        ("lunch", time(11, 0)),
+        ("dinner", time(17, 0)),
+    ]
+    today = now.date()
+    for meal_slot, start_time in slot_times:
+        slot_at = datetime.combine(today, start_time)
+        if slot_at > now and meal_slot not in fed_slots:
+            return slot_at
+    tomorrow = today + timedelta(days=1)
+    return datetime.combine(tomorrow, time(8, 0))
+
+
 @router.post("/", response_model=schemas.SchoolFood)
 def create_school_food(item_in: schemas.SchoolFoodCreate, db: Session = Depends(get_db)):
     item = models.SchoolFood(**item_in.dict())
@@ -52,15 +67,26 @@ def list_school_foods(type: Optional[str] = None, db: Session = Depends(get_db))
     return query.order_by(models.SchoolFood.school_food_id).all()
 
 
-@router.get("/today", response_model=list[schemas.SchoolFood])
+@router.get("/today", response_model=schemas.SchoolFoodToday)
 def list_today_school_foods(db: Session = Depends(get_db)):
-    food_type = get_today_food_type(get_kst_now())
-    return (
+    now = get_kst_now()
+    food_type = get_today_food_type(now)
+    items = (
         db.query(models.SchoolFood)
         .filter(models.SchoolFood.type == food_type)
         .order_by(models.SchoolFood.school_food_id)
         .all()
     )
+    return {
+        "date": now.date().isoformat(),
+        "server_time": now,
+        "sections": [
+            {
+                "meal_slot": "all",
+                "items": items,
+            }
+        ],
+    }
 
 
 @router.get("/feed-status", response_model=schemas.SchoolFoodFeedStatus)
@@ -89,6 +115,8 @@ def get_school_food_feed_status(
         "current_slot": current_slot,
         "fed_slots": fed_slots,
         "can_feed_now": current_slot is not None and current_slot not in fed_slots,
+        "next_slot_at": None if current_slot is not None and current_slot not in fed_slots else get_next_slot_at(now, fed_slots),
+        "server_time": now,
     }
 
 

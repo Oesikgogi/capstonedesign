@@ -71,6 +71,13 @@ class Character(Base):
     character_id = Column(Integer, primary_key=True, index=True)
     character_name = Column(String, nullable=False)
     stage = Column(Integer, default=1)
+    state = Column(String, default="basic1")
+    pending_evolution = Column(Boolean, default=False)
+    skipped_meal_count = Column(Integer, default=0)
+    hungry_state = Column(Boolean, default=False)
+    meal_health_date = Column(Date, nullable=True)
+    last_checked_meal_slot = Column(String, nullable=True)
+    applied_penalty_count = Column(Integer, default=0)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
 
     user = relationship("User", back_populates="characters")
@@ -152,6 +159,7 @@ class RoomItem(Base):
     __tablename__ = "room_items"
 
     item_id = Column(Integer, primary_key=True, index=True)
+    item_key = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
     item_type = Column(String, nullable=False)
     image = Column(String, nullable=True)

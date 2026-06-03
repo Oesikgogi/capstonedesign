@@ -81,3 +81,31 @@ def ensure_runtime_schema():
             for column_name, column_type in required_minigame_columns.items():
                 if column_name not in existing_minigame_columns:
                     connection.execute(text(f"ALTER TABLE minigame_results ADD COLUMN {column_name} {column_type}"))
+
+    if "characters" in table_names:
+        existing_character_columns = {column["name"] for column in inspector.get_columns("characters")}
+        required_character_columns = {
+            "state": "VARCHAR DEFAULT 'basic1'",
+            "pending_evolution": "BOOLEAN DEFAULT FALSE",
+            "skipped_meal_count": "INTEGER DEFAULT 0",
+            "hungry_state": "BOOLEAN DEFAULT FALSE",
+            "meal_health_date": "DATE",
+            "last_checked_meal_slot": "VARCHAR",
+            "applied_penalty_count": "INTEGER DEFAULT 0",
+        }
+        with engine.begin() as connection:
+            for column_name, column_type in required_character_columns.items():
+                if column_name not in existing_character_columns:
+                    connection.execute(text(f"ALTER TABLE characters ADD COLUMN {column_name} {column_type}"))
+
+            connection.execute(text("UPDATE characters SET state = 'basic1' WHERE state IS NULL"))
+            connection.execute(text("UPDATE characters SET pending_evolution = FALSE WHERE pending_evolution IS NULL"))
+            connection.execute(text("UPDATE characters SET skipped_meal_count = 0 WHERE skipped_meal_count IS NULL"))
+            connection.execute(text("UPDATE characters SET hungry_state = FALSE WHERE hungry_state IS NULL"))
+            connection.execute(text("UPDATE characters SET applied_penalty_count = 0 WHERE applied_penalty_count IS NULL"))
+
+    if "room_items" in table_names:
+        existing_room_item_columns = {column["name"] for column in inspector.get_columns("room_items")}
+        with engine.begin() as connection:
+            if "item_key" not in existing_room_item_columns:
+                connection.execute(text("ALTER TABLE room_items ADD COLUMN item_key VARCHAR"))

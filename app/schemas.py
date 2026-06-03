@@ -161,6 +161,7 @@ class QuizPlayStatus(BaseModel):
     last_played_at: Optional[datetime] = None
     next_available_at: Optional[datetime] = None
     can_play_now: bool
+    blocked_reason: Optional[str] = None
 
 
 class UserQuizConnectBase(BaseModel):
@@ -184,6 +185,7 @@ class CharacterBase(BaseModel):
     character_name: str
     stage: Optional[int] = 1
     user_id: int
+    state: Optional[str] = "basic1"
 
 
 class CharacterCreate(CharacterBase):
@@ -193,12 +195,57 @@ class CharacterCreate(CharacterBase):
 class CharacterUpdate(BaseModel):
     character_name: Optional[str] = None
     stage: Optional[int] = None
+    state: Optional[str] = None
 
 
 class Character(CharacterBase):
     character_id: int
+    pending_evolution: bool = False
+    skipped_meal_count: int = 0
+    hungry_state: bool = False
+    last_checked_meal_slot: Optional[str] = None
+    applied_penalty_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CharacterMeOut(BaseModel):
+    character_id: int
+    character_name: str
+    stage: int
+    xp_point: int
+    state: str
+    pending_evolution: bool = False
+
+
+class CharacterMeUpdate(BaseModel):
+    character_name: Optional[str] = None
+    state: Optional[str] = None
+
+
+class CharacterXpRequest(BaseModel):
+    amount: int
+    reason: Optional[str] = None
+
+
+class CharacterXpResult(BaseModel):
+    xp_point: int
+    added_xp: int
+    stage: int
+    pending_evolution: bool
+
+
+class CharacterMealHealth(BaseModel):
+    skipped_meal_count: int
+    hungry_state: bool
+    last_checked_meal_slot: Optional[str] = None
+    applied_penalty_count: int
+    server_time: datetime
+
+
+class CharacterMealPenaltyResult(CharacterMealHealth):
+    applied_penalty: int
+    xp_point: int
 
 
 class SchoolFoodBase(BaseModel):
@@ -225,6 +272,17 @@ class SchoolFood(SchoolFoodBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SchoolFoodSection(BaseModel):
+    meal_slot: str
+    items: list[SchoolFood]
+
+
+class SchoolFoodToday(BaseModel):
+    date: str
+    server_time: datetime
+    sections: list[SchoolFoodSection]
+
+
 class SchoolFoodFeedRequest(BaseModel):
     school_food_id: int
 
@@ -246,6 +304,8 @@ class SchoolFoodFeedStatus(BaseModel):
     current_slot: Optional[str] = None
     fed_slots: list[str]
     can_feed_now: bool
+    next_slot_at: Optional[datetime] = None
+    server_time: Optional[datetime] = None
 
 
 class FriendUser(BaseModel):
@@ -392,6 +452,7 @@ class MiniGameRankingList(BaseModel):
 
 
 class RoomItemBase(BaseModel):
+    item_key: Optional[str] = None
     name: str
     item_type: str
     image: Optional[str] = None
@@ -452,7 +513,25 @@ class RoomItemPurchaseResult(BaseModel):
 
 
 class RoomEquipRequest(BaseModel):
+    slot: Optional[str] = None
     item_id: int
+
+
+class RoomOwnerOut(BaseModel):
+    user_id: int
+    student_id: str
+    nickname: str
+    image: Optional[str] = None
+    xp_point: int
+    grade: int
+
+
+class RoomCharacterOut(BaseModel):
+    character_id: Optional[int] = None
+    character_name: Optional[str] = None
+    xp_point: int
+    stage: int
+    state: Optional[str] = None
 
 
 class RoomEquippedItemOut(BaseModel):
@@ -465,7 +544,9 @@ class RoomEquippedItemOut(BaseModel):
 
 
 class RoomView(BaseModel):
-    owner: FriendUser
+    owner: RoomOwnerOut
+    character: Optional[RoomCharacterOut] = None
+    wallpaper: Optional[RoomItemOut] = None
     equipped_items: list[RoomEquippedItemOut]
 
 
@@ -497,6 +578,10 @@ class GuestbookCreate(BaseModel):
         return value
 
 
+class GuestbookUpdate(GuestbookCreate):
+    pass
+
+
 class GuestbookOut(BaseModel):
     entry_id: int
     room_owner_id: int
@@ -504,3 +589,36 @@ class GuestbookOut(BaseModel):
     writer_nickname: str
     content: str
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GuestbookPage(BaseModel):
+    items: list[GuestbookOut]
+    next_cursor: Optional[str] = None
+
+
+class AppConfigQuiz(BaseModel):
+    daily_limit: int
+    cooldown_hours: int
+    correct_xp: int
+    incorrect_xp: int
+    reward_coin: int
+
+
+class AppConfigMinigame(BaseModel):
+    max_heart: int
+    heart_recovery_minutes: int
+    reward_coin: int
+    heart_cost: int
+
+
+class AppConfigSchoolFood(BaseModel):
+    feed_xp: int
+    feed_coin_cost: int
+
+
+class AppConfig(BaseModel):
+    quiz: AppConfigQuiz
+    minigame: AppConfigMinigame
+    school_food: AppConfigSchoolFood

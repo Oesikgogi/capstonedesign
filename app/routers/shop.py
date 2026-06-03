@@ -35,8 +35,10 @@ def serialize_shop_item(
     owned_item_ids: set[int],
     equipped_item_ids: set[int],
 ) -> dict:
+    item_key = item.item_key or f"{item.item_type}_{item.item_id}"
     return {
         "item_id": item.item_id,
+        "item_key": item_key,
         "name": item.name,
         "item_type": item.item_type,
         "image": item.image,
@@ -55,9 +57,13 @@ def list_shop_item_types():
 
 @router.post("/items", response_model=schemas.RoomItemOut, status_code=status.HTTP_201_CREATED)
 def create_room_item(item_in: schemas.RoomItemCreate, db: Session = Depends(get_db)):
-    item = models.RoomItem(**item_in.dict())
+    item_data = item_in.dict()
+    item = models.RoomItem(**item_data)
     db.add(item)
     db.commit()
+    if not item.item_key:
+        item.item_key = f"{item.item_type}_{item.item_id}"
+        db.commit()
     db.refresh(item)
     return item
 
@@ -112,6 +118,8 @@ def purchase_room_item(
     if current_user.coin < item.price:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough coins")
 
+    if not item.item_key:
+        item.item_key = f"{item.item_type}_{item.item_id}"
     current_user.coin -= item.price
     owned_item = models.UserRoomItem(
         user_id=current_user.user_id,

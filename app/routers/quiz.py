@@ -68,6 +68,11 @@ def get_quiz_play_status(db: Session, user_id: int, now: datetime) -> dict:
     )
     cooldown_ready = next_available_at is None or now >= next_available_at
     remaining_today = max(QUIZ_DAILY_LIMIT - solved_today, 0)
+    blocked_reason = None
+    if remaining_today <= 0:
+        blocked_reason = "daily_limit"
+    elif not cooldown_ready:
+        blocked_reason = "cooldown"
 
     return {
         "date": now.date().isoformat(),
@@ -78,6 +83,7 @@ def get_quiz_play_status(db: Session, user_id: int, now: datetime) -> dict:
         "last_played_at": last_played_at,
         "next_available_at": next_available_at,
         "can_play_now": remaining_today > 0 and cooldown_ready,
+        "blocked_reason": blocked_reason,
     }
 
 
