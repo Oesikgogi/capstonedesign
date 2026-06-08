@@ -25,6 +25,7 @@ class User(Base):
     heart = Column(Integer, default=5)
     heart_updated_at = Column(DateTime, default=datetime.utcnow)
     image = Column(String, nullable=True)
+    graduated_at = Column(DateTime, nullable=True)
 
     quizzes = relationship("UserQuizConnect", back_populates="user")
     characters = relationship("Character", back_populates="user")
@@ -151,6 +152,7 @@ class Character(Base):
     character_name = Column(String, nullable=False)
     stage = Column(Integer, default=1)
     state = Column(String, default="basic1")
+    equipped_skin_key = Column(String, default="default")
     pending_evolution = Column(Boolean, default=False)
     skipped_meal_count = Column(Integer, default=0)
     hungry_state = Column(Boolean, default=False)

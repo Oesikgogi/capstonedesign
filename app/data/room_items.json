@@ -1,0 +1,74 @@
+[
+  {
+    "item_key": "wallpaper-basic",
+    "name": "기본 벽지",
+    "item_type": "wallpaper",
+    "image": "/images/room/wallpaper-basic.png",
+    "price": 0,
+    "is_default": true
+  },
+  {
+    "item_key": "wallpaper-green",
+    "name": "초록 벽지",
+    "item_type": "wallpaper",
+    "image": "/images/room/wallpaper-green.png",
+    "price": 200,
+    "is_default": false
+  },
+  {
+    "item_key": "wallpaper-pink",
+    "name": "핑크 벽지",
+    "item_type": "wallpaper",
+    "image": "/images/room/wallpaper-pink.png",
+    "price": 200,
+    "is_default": false
+  },
+  {
+    "item_key": "bed-basic",
+    "name": "기본 침대",
+    "item_type": "bed",
+    "image": "/images/room/bed-basic.png",
+    "price": 0,
+    "is_default": true
+  },
+  {
+    "item_key": "bed-maple",
+    "name": "메이플 침대",
+    "item_type": "bed",
+    "image": "/images/room/bed-maple.png",
+    "price": 100,
+    "is_default": false
+  },
+  {
+    "item_key": "closet-basic",
+    "name": "기본 장롱",
+    "item_type": "closet",
+    "image": "/images/room/closet-basic.png",
+    "price": 0,
+    "is_default": true
+  },
+  {
+    "item_key": "closet-oak",
+    "name": "오크 장롱",
+    "item_type": "closet",
+    "image": "/images/room/closet-oak.png",
+    "price": 100,
+    "is_default": false
+  },
+  {
+    "item_key": "table-basic",
+    "name": "기본 책상",
+    "item_type": "table",
+    "image": "/images/room/table-basic.png",
+    "price": 0,
+    "is_default": true
+  },
+  {
+    "item_key": "table-maple-blue",
+    "name": "메이플 블루 책상",
+    "item_type": "table",
+    "image": "/images/room/table-maple-blue.png",
+    "price": 100,
+    "is_default": false
+  }
+]

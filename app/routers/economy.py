@@ -144,6 +144,8 @@ def reward_minigame(
         )
     if play_session.game_type != reward_in.game_type or play_session.mode != reward_in.mode:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mini game session mismatch")
+    if reward_in.success is False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mini game was not successful")
 
     play_session.rewarded = True
     play_session.rewarded_at = get_kst_now()

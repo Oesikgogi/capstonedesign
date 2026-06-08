@@ -54,12 +54,56 @@ def get_user_grade(xp_point: int) -> int:
     return max((xp_point or 0) // 1000 + 1, 1)
 
 
+ROOM_ITEM_TYPE_ALIASES = {
+    "wallpaper": "wallpaper",
+    "room": "wallpaper",
+    "마이룸방": "wallpaper",
+    "벽지": "wallpaper",
+    "bed": "bed",
+    "침대": "bed",
+    "closet": "closet",
+    "장롱": "closet",
+    "table": "table",
+    "desk": "table",
+    "책상": "table",
+}
+
+
+def normalize_room_item_type(item_type: str) -> str:
+    return ROOM_ITEM_TYPE_ALIASES.get(item_type.strip(), item_type)
+
+
+def ensure_default_room_state(db: Session, user: models.User) -> None:
+    existing_slots = {
+        normalize_room_item_type(row.item_type)
+        for row in db.query(models.UserRoomEquipped.item_type)
+        .filter(models.UserRoomEquipped.user_id == user.user_id)
+        .all()
+    }
+    default_items = db.query(models.RoomItem).filter(models.RoomItem.is_default == True).all()
+    for item in default_items:
+        item_type = normalize_room_item_type(item.item_type)
+        if item_type in existing_slots:
+            continue
+        item.item_type = item_type
+        db.add(
+            models.UserRoomEquipped(
+                user_id=user.user_id,
+                item_type=item_type,
+                item_id=item.item_id,
+            )
+        )
+        existing_slots.add(item_type)
+    db.flush()
+
+
 def serialize_room_item(item: models.RoomItem) -> dict:
+    item_type = normalize_room_item_type(item.item_type)
     return {
         "item_id": item.item_id,
-        "item_key": item.item_key or f"{item.item_type}_{item.item_id}",
+        "item_key": item.item_key or f"{item_type}-{item.item_id}",
         "name": item.name,
-        "item_type": item.item_type,
+        "item_type": item_type,
         "image": item.image,
         "price": item.price,
         "is_default": item.is_default,
@@ -68,9 +112,10 @@ def serialize_room_item(item: models.RoomItem) -> dict:
 
 
 def serialize_equipped_item(equipped_item: models.UserRoomEquipped) -> dict:
+    item_type = normalize_room_item_type(equipped_item.item_type)
     return {
         "equipped_id": equipped_item.equipped_id,
-        "item_type": equipped_item.item_type,
+        "item_type": item_type,
         "equipped_at": equipped_item.equipped_at,
         "item": serialize_room_item(equipped_item.item),
     }
@@ -103,6 +148,7 @@ def serialize_character(owner: models.User, character: Optional[models.Character
         "xp_point": owner.xp_point,
         "stage": character.stage if character else 1,
         "state": character.state if character else None,
+        "equipped_skin_key": character.equipped_skin_key if character else "default",
     }
 
 
@@ -112,7 +158,10 @@ def serialize_room(
     db: Session,
     unlocked_achievements: list[dict] | None = None,
 ) -> dict:
-    wallpaper_equipped = next((item for item in equipped_items if item.item_type == "room"), None)
+    wallpaper_equipped = next(
+        (item for item in equipped_items if normalize_room_item_type(item.item_type) == "wallpaper"),
+        None,
+    )
     return {
         "owner": serialize_owner(owner),
         "character": serialize_character(owner, get_primary_character(db, owner.user_id)),
@@ -127,6 +176,8 @@ def get_my_room(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    ensure_default_room_state(db, current_user)
+    db.commit()
     equipped_items = (
         db.query(models.UserRoomEquipped)
         .filter(models.UserRoomEquipped.user_id == current_user.user_id)
@@ -146,6 +197,11 @@ def equip_room_item(
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room item not found")
 
+    item.item_type = normalize_room_item_type(item.item_type)
+    requested_slot = normalize_room_item_type(equip_in.slot) if equip_in.slot else item.item_type
+    if requested_slot != item.item_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slot does not match item type")
+
     owned_item = (
         db.query(models.UserRoomItem)
         .filter(
@@ -161,7 +217,7 @@ def equip_room_item(
         db.query(models.UserRoomEquipped)
         .filter(
             models.UserRoomEquipped.user_id == current_user.user_id,
-            models.UserRoomEquipped.item_type == item.item_type,
+            models.UserRoomEquipped.item_type == requested_slot,
         )
         .first()
     )
@@ -171,7 +227,7 @@ def equip_room_item(
     else:
         equipped_item = models.UserRoomEquipped(
             user_id=current_user.user_id,
-            item_type=item.item_type,
+            item_type=requested_slot,
             item_id=item.item_id,
         )
         db.add(equipped_item)
@@ -198,7 +254,7 @@ def unequip_room_item(
         db.query(models.UserRoomEquipped)
         .filter(
             models.UserRoomEquipped.user_id == current_user.user_id,
-            models.UserRoomEquipped.item_type == slot,
+            models.UserRoomEquipped.item_type == normalize_room_item_type(slot),
         )
         .first()
     )
@@ -223,6 +279,8 @@ def get_room(
 ):
     owner = get_room_owner_or_404(user_id, db)
     require_room_access(owner, current_user, db)
+    ensure_default_room_state(db, owner)
+    db.commit()
     equipped_items = (
         db.query(models.UserRoomEquipped)
         .filter(models.UserRoomEquipped.user_id == owner.user_id)

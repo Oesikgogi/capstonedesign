@@ -51,6 +51,19 @@ def get_next_slot_at(now: datetime, fed_slots: list[str]) -> Optional[datetime]:
     return datetime.combine(tomorrow, time(8, 0))
 
 
+def serialize_school_food(item: models.SchoolFood) -> dict:
+    return {
+        "id": item.school_food_id,
+        "school_food_id": item.school_food_id,
+        "name": item.name,
+        "school_food_img": item.school_food_img,
+        "image": item.school_food_img,
+        "school_food_time": item.school_food_time,
+        "type": item.type,
+        "price": FEED_COIN_COST,
+    }
+
+
 @router.post("/", response_model=schemas.SchoolFood)
 def create_school_food(
     item_in: schemas.SchoolFoodCreate,
@@ -61,19 +74,18 @@ def create_school_food(
     db.add(item)
     db.commit()
     db.refresh(item)
-    return item
+    return serialize_school_food(item)
 
 
 @router.get("/", response_model=list[schemas.SchoolFood])
 def list_school_foods(
     type: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_admin: models.User = Depends(get_current_admin_user),
 ):
     query = db.query(models.SchoolFood)
     if type:
         query = query.filter(models.SchoolFood.type == type)
-    return query.order_by(models.SchoolFood.school_food_id).all()
+    return [serialize_school_food(item) for item in query.order_by(models.SchoolFood.school_food_id).all()]
 
 
 @router.get("/today", response_model=schemas.SchoolFoodToday)
@@ -92,7 +104,7 @@ def list_today_school_foods(db: Session = Depends(get_db)):
         "sections": [
             {
                 "meal_slot": "all",
-                "items": items,
+                "items": [serialize_school_food(item) for item in items],
             }
         ],
     }
@@ -211,12 +223,11 @@ def feed_school_food(
 def get_school_food(
     school_food_id: int,
     db: Session = Depends(get_db),
-    current_admin: models.User = Depends(get_current_admin_user),
 ):
     item = db.query(models.SchoolFood).filter(models.SchoolFood.school_food_id == school_food_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="School food not found")
-    return item
+    return serialize_school_food(item)
 
 
 @router.put("/{school_food_id}", response_model=schemas.SchoolFood)
@@ -233,7 +244,7 @@ def update_school_food(
         setattr(item, field, value)
     db.commit()
     db.refresh(item)
-    return item
+    return serialize_school_food(item)
 
 
 @router.delete("/{school_food_id}")

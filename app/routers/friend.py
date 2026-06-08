@@ -80,6 +80,16 @@ def search_friend_by_student_id(
     user = db.query(models.User).filter(models.User.student_id == student_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("SELF_FRIEND_REQUEST", "자기 자신은 친구로 추가할 수 없습니다."),
+        )
+    if are_already_friends(db, current_user.user_id, user.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("ALREADY_FRIEND", "이미 친구로 추가된 유저입니다."),
+        )
 
     return user
 
@@ -158,7 +168,10 @@ def create_friend_request(
     if not receiver:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if receiver.user_id == current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot request yourself as a friend")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("SELF_FRIEND_REQUEST", "자기 자신은 친구로 추가할 수 없습니다."),
+        )
     if are_already_friends(db, current_user.user_id, receiver.user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

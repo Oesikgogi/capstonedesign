@@ -60,6 +60,7 @@ def ensure_runtime_schema():
         "heart": "INTEGER DEFAULT 5",
         "heart_updated_at": "TIMESTAMP",
         "is_admin": "BOOLEAN DEFAULT FALSE",
+        "graduated_at": "TIMESTAMP",
     }
 
     with engine.begin() as connection:
@@ -88,6 +89,7 @@ def ensure_runtime_schema():
         existing_character_columns = {column["name"] for column in inspector.get_columns("characters")}
         required_character_columns = {
             "state": "VARCHAR DEFAULT 'basic1'",
+            "equipped_skin_key": "VARCHAR DEFAULT 'default'",
             "pending_evolution": "BOOLEAN DEFAULT FALSE",
             "skipped_meal_count": "INTEGER DEFAULT 0",
             "hungry_state": "BOOLEAN DEFAULT FALSE",
@@ -101,6 +103,7 @@ def ensure_runtime_schema():
                     connection.execute(text(f"ALTER TABLE characters ADD COLUMN {column_name} {column_type}"))
 
             connection.execute(text("UPDATE characters SET state = 'basic1' WHERE state IS NULL"))
+            connection.execute(text("UPDATE characters SET equipped_skin_key = 'default' WHERE equipped_skin_key IS NULL"))
             connection.execute(text("UPDATE characters SET pending_evolution = FALSE WHERE pending_evolution IS NULL"))
             connection.execute(text("UPDATE characters SET skipped_meal_count = 0 WHERE skipped_meal_count IS NULL"))
             connection.execute(text("UPDATE characters SET hungry_state = FALSE WHERE hungry_state IS NULL"))
@@ -111,3 +114,10 @@ def ensure_runtime_schema():
         with engine.begin() as connection:
             if "item_key" not in existing_room_item_columns:
                 connection.execute(text("ALTER TABLE room_items ADD COLUMN item_key VARCHAR"))
+            connection.execute(text("UPDATE room_items SET item_type = 'wallpaper' WHERE item_type = 'room'"))
+            connection.execute(text("UPDATE room_items SET item_type = 'table' WHERE item_type = 'desk'"))
+
+    if "user_room_equipped" in table_names:
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE user_room_equipped SET item_type = 'wallpaper' WHERE item_type = 'room'"))
+            connection.execute(text("UPDATE user_room_equipped SET item_type = 'table' WHERE item_type = 'desk'"))

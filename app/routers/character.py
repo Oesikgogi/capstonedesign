@@ -14,6 +14,7 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 KST = ZoneInfo("Asia/Seoul")
 EVOLUTION_XP_UNIT = 1000
 MEAL_PENALTY_XP = 10
+ALLOWED_SKIN_KEYS = {"default", "skin_truth", "skin_peace", "skin_creation"}
 
 
 def get_kst_now() -> datetime:
@@ -35,6 +36,7 @@ def get_or_create_my_character(db: Session, user: models.User) -> models.Charact
         character_name="부",
         stage=1,
         state="basic1",
+        equipped_skin_key="default",
     )
     db.add(character)
     db.commit()
@@ -46,11 +48,33 @@ def serialize_my_character(character: models.Character, user: models.User) -> di
     return {
         "character_id": character.character_id,
         "character_name": character.character_name,
+        "name": user.name,
+        "nickname": user.nickname,
         "stage": character.stage,
+        "grade": character.stage,
         "xp_point": user.xp_point,
         "state": character.state,
+        "equipped_skin_key": character.equipped_skin_key or "default",
         "pending_evolution": character.pending_evolution,
     }
+
+
+def validate_skin_ownership(db: Session, user: models.User, skin_key: str) -> None:
+    if skin_key not in ALLOWED_SKIN_KEYS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid skin key")
+    if skin_key == "default":
+        return
+    owned_skin = (
+        db.query(models.UserSkin)
+        .filter(
+            models.UserSkin.user_id == user.user_id,
+            models.UserSkin.skin_key == skin_key,
+            models.UserSkin.owned == True,
+        )
+        .first()
+    )
+    if not owned_skin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Skin is not owned")
 
 
 def get_passed_meal_slots(now: datetime) -> list[str]:
@@ -112,7 +136,12 @@ def update_my_character(
     db: Session = Depends(get_db),
 ):
     character = get_or_create_my_character(db, current_user)
-    for field, value in character_in.dict(exclude_unset=True).items():
+    update_data = character_in.dict(exclude_unset=True)
+    if "equipped_skin_key" in update_data:
+        skin_key = update_data["equipped_skin_key"] or "default"
+        validate_skin_ownership(db, current_user, skin_key)
+        update_data["equipped_skin_key"] = skin_key
+    for field, value in update_data.items():
         setattr(character, field, value)
     db.commit()
     db.refresh(character)

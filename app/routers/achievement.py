@@ -14,8 +14,11 @@ from .user import get_current_user
 router = APIRouter(prefix="/achievements", tags=["achievements"])
 
 SUPPORTED_EVENT_TYPES = {
-    "room_enter",
-    "campus_visit",
+    "first_login": "first_login",
+    "room_enter": "room_enter",
+    "room_first_enter": "room_enter",
+    "campus_visit": "campus_visit",
+    "campus_first_visit": "campus_visit",
 }
 
 
@@ -40,10 +43,10 @@ def create_achievement_event(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if event_in.event_type not in SUPPORTED_EVENT_TYPES:
+    event_type = SUPPORTED_EVENT_TYPES.get(event_in.event_type)
+    if not event_type:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported achievement event")
 
-    event_type = "room_enter" if event_in.event_type == "room_enter" else "campus_visit"
     unlocked_achievements = apply_achievement_event(db, current_user, event_type)
     db.commit()
     db.refresh(current_user)

@@ -51,6 +51,7 @@ class UserOut(UserBase):
     email_verified_at: Optional[datetime] = None
     is_admin: bool = False
     created_at: Optional[datetime] = None
+    graduated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -167,6 +168,7 @@ class Quiz(QuizBase):
 class QuizQuestion(BaseModel):
     quiz_id: int
     question: str
+    answer: str
     options: Optional[QuizOptions] = None
     quiz_point: int
 
@@ -223,6 +225,7 @@ class CharacterBase(BaseModel):
     stage: Optional[int] = 1
     user_id: int
     state: Optional[str] = "basic1"
+    equipped_skin_key: Optional[str] = "default"
 
 
 class CharacterCreate(CharacterBase):
@@ -233,6 +236,7 @@ class CharacterUpdate(BaseModel):
     character_name: Optional[str] = None
     stage: Optional[int] = None
     state: Optional[str] = None
+    equipped_skin_key: Optional[str] = None
 
 
 class Character(CharacterBase):
@@ -249,15 +253,20 @@ class Character(CharacterBase):
 class CharacterMeOut(BaseModel):
     character_id: int
     character_name: str
+    name: str
+    nickname: str
     stage: int
+    grade: int
     xp_point: int
     state: str
+    equipped_skin_key: str = "default"
     pending_evolution: bool = False
 
 
 class CharacterMeUpdate(BaseModel):
     character_name: Optional[str] = None
     state: Optional[str] = None
+    equipped_skin_key: Optional[str] = None
 
 
 class CharacterXpRequest(BaseModel):
@@ -306,7 +315,10 @@ class SchoolFoodUpdate(BaseModel):
 
 
 class SchoolFood(SchoolFoodBase):
+    id: int
     school_food_id: int
+    image: Optional[str] = None
+    price: int = 4
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -442,6 +454,7 @@ class MiniGameRewardRequest(BaseModel):
     game_type: str
     mode: str = "normal"
     score: int
+    success: Optional[bool] = True
 
     @field_validator("score")
     @classmethod
@@ -541,18 +554,21 @@ class RoomItemBase(BaseModel):
     @classmethod
     def validate_item_type(cls, value):
         item_type_aliases = {
-            "desk": "desk",
-            "책상": "desk",
+            "table": "table",
+            "desk": "table",
+            "책상": "table",
             "bed": "bed",
             "침대": "bed",
             "closet": "closet",
             "장롱": "closet",
-            "room": "room",
-            "마이룸방": "room",
+            "wallpaper": "wallpaper",
+            "room": "wallpaper",
+            "마이룸방": "wallpaper",
+            "벽지": "wallpaper",
         }
         normalized = item_type_aliases.get(value.strip())
         if not normalized:
-            raise ValueError("Item type must be one of desk, bed, closet, room")
+            raise ValueError("Item type must be one of wallpaper, bed, closet, table")
         return normalized
 
 
@@ -579,7 +595,7 @@ class ShopItemTypeOut(BaseModel):
 
 class RoomItemPurchaseResult(BaseModel):
     detail: str
-    item: RoomItemOut
+    item: ShopItemOut
     coin: int
 
 
@@ -603,6 +619,7 @@ class RoomCharacterOut(BaseModel):
     xp_point: int
     stage: int
     state: Optional[str] = None
+    equipped_skin_key: str = "default"
 
 
 class RoomEquippedItemOut(BaseModel):
@@ -630,7 +647,7 @@ class TutorialFlags(BaseModel):
 class AppBootstrap(BaseModel):
     user: UserOut
     economy: EconomyStatus
-    character: Optional[Character] = None
+    character: Optional[CharacterMeOut] = None
     room: RoomView
     shop_items: list[ShopItemOut]
     tutorial_flags: TutorialFlags
@@ -737,3 +754,32 @@ class ErrorResponse(BaseModel):
     code: str
     message: str
     meta: dict = Field(default_factory=dict)
+
+
+class MiniGameBestScore(BaseModel):
+    game_type: Optional[str] = None
+    mode: Optional[str] = None
+    best_score: int
+
+
+class GraduationSummary(BaseModel):
+    user_id: int
+    created_at: Optional[datetime] = None
+    graduated_at: Optional[datetime] = None
+    play_days: int
+    feed_count: int
+    quiz_attempt_count: int
+    quiz_correct_count: int
+    minigame_best_scores: list[MiniGameBestScore]
+
+
+class DebugMePatch(BaseModel):
+    coin: Optional[int] = None
+    xp_point: Optional[int] = None
+    stage: Optional[int] = None
+    character_state: Optional[str] = None
+
+
+class DebugMeResult(BaseModel):
+    user: UserOut
+    character: Optional[CharacterMeOut] = None

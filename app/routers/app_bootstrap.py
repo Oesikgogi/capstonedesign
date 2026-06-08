@@ -12,6 +12,7 @@ from .economy import (
     serialize_economy_status,
     sync_user_hearts,
 )
+from .character import get_or_create_my_character, serialize_my_character
 from .quiz import (
     QUIZ_COIN_REWARD,
     QUIZ_COOLDOWN_HOURS,
@@ -19,7 +20,7 @@ from .quiz import (
     QUIZ_DAILY_LIMIT,
     QUIZ_INCORRECT_XP,
 )
-from .room import serialize_room
+from .room import ensure_default_room_state, serialize_room
 from .school_food import FEED_COIN_COST, FEED_XP
 from .shop import serialize_shop_item
 from .user import get_current_user
@@ -60,12 +61,9 @@ def get_app_bootstrap(
     db.commit()
     db.refresh(current_user)
 
-    character = (
-        db.query(models.Character)
-        .filter(models.Character.user_id == current_user.user_id)
-        .order_by(models.Character.character_id.asc())
-        .first()
-    )
+    character = get_or_create_my_character(db, current_user)
+    ensure_default_room_state(db, current_user)
+    db.commit()
     equipped_items = (
         db.query(models.UserRoomEquipped)
         .filter(models.UserRoomEquipped.user_id == current_user.user_id)
@@ -90,7 +88,7 @@ def get_app_bootstrap(
     return {
         "user": current_user,
         "economy": serialize_economy_status(current_user, now),
-        "character": character,
+        "character": serialize_my_character(character, current_user),
         "room": serialize_room(current_user, equipped_items, db),
         "shop_items": [
             serialize_shop_item(item, owned_item_ids, equipped_item_ids)

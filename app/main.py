@@ -4,10 +4,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .database import Base, engine, ensure_runtime_schema
-from .routers import achievement, app_bootstrap, character, economy, friend, minigame, quiz, room, school_food, shop, user, user_quiz_connect
+from .routers import achievement, app_bootstrap, character, debug, economy, friend, graduation, minigame, quiz, room, school_food, shop, user, user_quiz_connect
+from .seed_room_items import seed_room_items
+from .seed_school_foods import seed_school_foods
 
 Base.metadata.create_all(bind=engine)
 ensure_runtime_schema()
+seed_school_foods()
+seed_room_items()
 
 app = FastAPI(title="Boo키우기 API", version="0.1.0")
 
@@ -49,6 +53,8 @@ app.include_router(room.router)
 app.include_router(user_quiz_connect.router)
 app.include_router(app_bootstrap.router)
 app.include_router(achievement.router)
+app.include_router(graduation.router)
+app.include_router(debug.router)
 
 @app.get("/")
 def root():
