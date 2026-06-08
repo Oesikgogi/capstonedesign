@@ -84,6 +84,22 @@ def ensure_runtime_schema():
             for column_name, column_type in required_minigame_columns.items():
                 if column_name not in existing_minigame_columns:
                     connection.execute(text(f"ALTER TABLE minigame_results ADD COLUMN {column_name} {column_type}"))
+            connection.execute(text("""
+                UPDATE minigame_results
+                SET play_session_id = NULL
+                WHERE play_session_id IS NOT NULL
+                  AND result_id NOT IN (
+                    SELECT MIN(result_id)
+                    FROM minigame_results
+                    WHERE play_session_id IS NOT NULL
+                    GROUP BY play_session_id
+                  )
+            """))
+            connection.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_minigame_result_play_session
+                ON minigame_results (play_session_id)
+                WHERE play_session_id IS NOT NULL
+            """))
 
     if "characters" in table_names:
         existing_character_columns = {column["name"] for column in inspector.get_columns("characters")}

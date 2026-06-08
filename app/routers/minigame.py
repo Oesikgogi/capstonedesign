@@ -1,38 +1,23 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..core.achievements import evaluate_achievements
+from ..core.errors import error_detail
 from ..database import get_db
 from .user import get_current_user
 
 router = APIRouter(prefix="/minigames", tags=["minigames"])
 
 
-@router.post("/results", response_model=schemas.MiniGameResultOut)
-def create_minigame_result(
-    result_in: schemas.MiniGameResultCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    result = models.MiniGameResult(
-        user_id=current_user.user_id,
-        play_session_id=result_in.play_session_id,
-        game_type=result_in.game_type,
-        mode=result_in.mode,
-        location=result_in.location,
-        score=result_in.score,
-        success=result_in.success,
-        ended_reason=result_in.ended_reason,
-        play_time_seconds=result_in.play_time_seconds,
-    )
-    db.add(result)
-    unlocked_achievements = evaluate_achievements(db, current_user)
-    db.commit()
-    db.refresh(result)
+def serialize_minigame_result(
+    result: models.MiniGameResult,
+    unlocked_achievements: Optional[list[dict]] = None,
+) -> dict:
     return {
         "result_id": result.result_id,
         "user_id": result.user_id,
@@ -45,8 +30,63 @@ def create_minigame_result(
         "ended_reason": result.ended_reason,
         "play_time_seconds": result.play_time_seconds,
         "created_at": result.created_at,
-        "unlocked_achievements": unlocked_achievements,
+        "unlocked_achievements": unlocked_achievements or [],
     }
+
+
+def get_existing_result_by_session(db: Session, play_session_id: str) -> models.MiniGameResult | None:
+    return (
+        db.query(models.MiniGameResult)
+        .filter(models.MiniGameResult.play_session_id == play_session_id)
+        .first()
+    )
+
+
+@router.post("/results", response_model=schemas.MiniGameResultOut)
+def create_minigame_result(
+    result_in: schemas.MiniGameResultCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if result_in.play_session_id:
+        existing_result = get_existing_result_by_session(db, result_in.play_session_id)
+        if existing_result:
+            if existing_result.user_id != current_user.user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=error_detail("RESULT_ALREADY_EXISTS", "이미 다른 유저의 미니게임 결과로 저장된 세션입니다."),
+                )
+            return serialize_minigame_result(existing_result)
+
+    result = models.MiniGameResult(
+        user_id=current_user.user_id,
+        play_session_id=result_in.play_session_id,
+        game_type=result_in.game_type,
+        mode=result_in.mode,
+        location=result_in.location,
+        score=result_in.score,
+        success=result_in.success,
+        ended_reason=result_in.ended_reason,
+        play_time_seconds=result_in.play_time_seconds,
+    )
+    db.add(result)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if result_in.play_session_id:
+            existing_result = get_existing_result_by_session(db, result_in.play_session_id)
+            if existing_result and existing_result.user_id == current_user.user_id:
+                return serialize_minigame_result(existing_result)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_detail("RESULT_ALREADY_EXISTS", "이미 저장된 미니게임 결과입니다."),
+        )
+
+    unlocked_achievements = evaluate_achievements(db, current_user)
+    db.commit()
+    db.refresh(result)
+    return serialize_minigame_result(result, unlocked_achievements)
 
 
 @router.get("/results/me", response_model=list[schemas.MiniGameResultOut])

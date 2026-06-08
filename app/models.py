@@ -205,6 +205,7 @@ class Friend(Base):
 
 class MiniGameResult(Base):
     __tablename__ = "minigame_results"
+    __table_args__ = (UniqueConstraint("play_session_id", name="uq_minigame_result_play_session"),)
 
     result_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
