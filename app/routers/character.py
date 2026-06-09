@@ -56,6 +56,10 @@ def serialize_my_character(character: models.Character, user: models.User) -> di
         "state": character.state,
         "equipped_skin_key": character.equipped_skin_key or "default",
         "pending_evolution": character.pending_evolution,
+        "skipped_meal_count": character.skipped_meal_count or 0,
+        "hungry_state": character.hungry_state or False,
+        "last_checked_meal_slot": character.last_checked_meal_slot,
+        "applied_penalty_count": character.applied_penalty_count or 0,
     }
 
 

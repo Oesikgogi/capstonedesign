@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
@@ -121,7 +121,7 @@ def list_available_quizzes(
     return (
         db.query(models.Quiz)
         .filter(models.Quiz.quiz_id.notin_(solved_quiz_ids))
-        .order_by(models.Quiz.quiz_id)
+        .order_by(func.random())
         .all()
     )
 
@@ -137,7 +137,7 @@ def get_next_quiz(
     quiz = (
         db.query(models.Quiz)
         .filter(models.Quiz.quiz_id.notin_(solved_quiz_ids))
-        .order_by(models.Quiz.quiz_id)
+        .order_by(func.random())
         .first()
     )
     if not quiz:

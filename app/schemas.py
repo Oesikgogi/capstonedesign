@@ -118,6 +118,9 @@ class UserPreferenceOut(BaseModel):
     bgm_volume: Optional[float] = None
     sfx_volume: Optional[float] = None
     master_volume: Optional[float] = None
+    meal_day_mode: Optional[str] = None
+    meal_restriction_enabled: Optional[bool] = None
+    quiz_daily_limit_enabled: Optional[bool] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -129,6 +132,9 @@ class UserPreferenceUpdate(BaseModel):
     bgm_volume: Optional[float] = None
     sfx_volume: Optional[float] = None
     master_volume: Optional[float] = None
+    meal_day_mode: Optional[str] = None
+    meal_restriction_enabled: Optional[bool] = None
+    quiz_daily_limit_enabled: Optional[bool] = None
 
     @field_validator("bgm_volume", "sfx_volume", "master_volume")
     @classmethod
@@ -251,8 +257,11 @@ class Character(CharacterBase):
 
 
 class CharacterMeOut(BaseModel):
+    applied_penalty_count: int = 0
     character_id: int
     character_name: str
+    hungry_state: bool = False
+    last_checked_meal_slot: Optional[str] = None
     name: str
     nickname: str
     stage: int
@@ -261,6 +270,7 @@ class CharacterMeOut(BaseModel):
     state: str
     equipped_skin_key: str = "default"
     pending_evolution: bool = False
+    skipped_meal_count: int = 0
 
 
 class CharacterMeUpdate(BaseModel):
@@ -774,10 +784,22 @@ class GraduationSummary(BaseModel):
 
 
 class DebugMePatch(BaseModel):
+    character_name: Optional[str] = None
     coin: Optional[int] = None
-    xp_point: Optional[int] = None
-    stage: Optional[int] = None
     character_state: Optional[str] = None
+    clear_meal_history: Optional[bool] = None
+    clear_quiz_history: Optional[bool] = None
+    has_seen_game_tutorial: Optional[bool] = None
+    has_seen_minigame_tutorial: Optional[bool] = None
+    meal_day_mode: Optional[str] = None
+    meal_restriction_enabled: Optional[bool] = None
+    name: Optional[str] = None
+    quiz_daily_limit_enabled: Optional[bool] = None
+    reset_game_state: Optional[bool] = None
+    skipped_meal_count: Optional[int] = None
+    stage: Optional[int] = None
+    student_id: Optional[str] = None
+    xp_point: Optional[int] = None
 
 
 class DebugMeResult(BaseModel):

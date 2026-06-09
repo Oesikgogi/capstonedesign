@@ -51,6 +51,9 @@ class UserPreference(Base):
     bgm_volume = Column(Float, nullable=True)
     sfx_volume = Column(Float, nullable=True)
     master_volume = Column(Float, nullable=True)
+    meal_day_mode = Column(String, nullable=True)
+    meal_restriction_enabled = Column(Boolean, nullable=True)
+    quiz_daily_limit_enabled = Column(Boolean, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")

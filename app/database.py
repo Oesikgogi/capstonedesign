@@ -101,6 +101,18 @@ def ensure_runtime_schema():
                 WHERE play_session_id IS NOT NULL
             """))
 
+    if "user_preferences" in table_names:
+        existing_preference_columns = {column["name"] for column in inspector.get_columns("user_preferences")}
+        required_preference_columns = {
+            "meal_day_mode": "VARCHAR",
+            "meal_restriction_enabled": "BOOLEAN",
+            "quiz_daily_limit_enabled": "BOOLEAN",
+        }
+        with engine.begin() as connection:
+            for column_name, column_type in required_preference_columns.items():
+                if column_name not in existing_preference_columns:
+                    connection.execute(text(f"ALTER TABLE user_preferences ADD COLUMN {column_name} {column_type}"))
+
     if "characters" in table_names:
         existing_character_columns = {column["name"] for column in inspector.get_columns("characters")}
         required_character_columns = {
