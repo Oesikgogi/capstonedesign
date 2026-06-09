@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -10,45 +11,89 @@ from .user import get_current_user
 
 router = APIRouter(prefix="/graduation", tags=["graduation"])
 
+KST = ZoneInfo("Asia/Seoul")
+GRADUATION_MINIGAME_TYPES = ("catchTheMajor", "catchBoo", "freeThrow")
 
-def build_graduation_summary(user: models.User, db: Session) -> dict:
-    today = datetime.utcnow().date()
-    play_days = 1
-    if user.created_at:
-        play_days = max((today - user.created_at.date()).days + 1, 1)
 
-    best_scores = (
-        db.query(
-            models.MiniGameResult.game_type,
-            models.MiniGameResult.mode,
-            func.max(models.MiniGameResult.score).label("best_score"),
-        )
-        .filter(models.MiniGameResult.user_id == user.user_id)
-        .group_by(models.MiniGameResult.game_type, models.MiniGameResult.mode)
-        .all()
+def get_kst_today():
+    return datetime.now(KST).date()
+
+
+def get_kst_date(value: datetime):
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(KST).date()
+
+
+def get_play_days(user: models.User) -> int:
+    if not user.created_at:
+        return 1
+    return max((get_kst_today() - get_kst_date(user.created_at)).days + 1, 1)
+
+
+def get_feed_count(db: Session, user: models.User) -> int:
+    return (
+        db.query(models.SchoolFoodFeed)
+        .filter(models.SchoolFoodFeed.user_id == user.user_id)
+        .count()
     )
 
-    return {
-        "user_id": user.user_id,
-        "created_at": user.created_at,
-        "graduated_at": user.graduated_at,
-        "play_days": play_days,
-        "feed_count": db.query(models.SchoolFoodFeed).filter(models.SchoolFoodFeed.user_id == user.user_id).count(),
-        "quiz_attempt_count": db.query(models.UserQuizConnect).filter(models.UserQuizConnect.user_id == user.user_id).count(),
-        "quiz_correct_count": db.query(models.UserQuizConnect)
+
+def get_quiz_attempt_count(db: Session, user: models.User) -> int:
+    return (
+        db.query(models.UserQuizConnect)
+        .filter(models.UserQuizConnect.user_id == user.user_id)
+        .count()
+    )
+
+
+def get_quiz_correct_count(db: Session, user: models.User) -> int:
+    return (
+        db.query(models.UserQuizConnect)
         .filter(
             models.UserQuizConnect.user_id == user.user_id,
             models.UserQuizConnect.correct_boolean == True,
         )
-        .count(),
-        "minigame_best_scores": [
-            {
-                "game_type": row.game_type,
-                "mode": row.mode,
-                "best_score": row.best_score,
-            }
-            for row in best_scores
-        ],
+        .count()
+    )
+
+
+def get_minigame_best_scores(db: Session, user: models.User) -> list[dict]:
+    best_scores = (
+        db.query(
+            models.MiniGameResult.game_type,
+            func.max(models.MiniGameResult.score).label("best_score"),
+        )
+        .filter(
+            models.MiniGameResult.user_id == user.user_id,
+            models.MiniGameResult.game_type.in_(GRADUATION_MINIGAME_TYPES),
+            models.MiniGameResult.mode == "normal",
+        )
+        .group_by(models.MiniGameResult.game_type)
+        .order_by(models.MiniGameResult.game_type)
+        .all()
+    )
+
+    return [
+        {
+            "game_type": row.game_type,
+            "mode": "normal",
+            "best_score": row.best_score or 0,
+        }
+        for row in best_scores
+    ]
+
+
+def build_graduation_summary(user: models.User, db: Session) -> dict:
+    return {
+        "user_id": user.user_id,
+        "created_at": user.created_at,
+        "graduated_at": user.graduated_at,
+        "play_days": get_play_days(user),
+        "feed_count": get_feed_count(db, user),
+        "quiz_attempt_count": get_quiz_attempt_count(db, user),
+        "quiz_correct_count": get_quiz_correct_count(db, user),
+        "minigame_best_scores": get_minigame_best_scores(db, user),
     }
 
 
