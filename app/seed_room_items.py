@@ -1,15 +1,133 @@
-import json
-from pathlib import Path
-
 from . import models
 from .database import SessionLocal
 
 
-ROOM_ITEMS_PATH = Path(__file__).resolve().parent / "data" / "room_items.json"
+WALLPAPER_ITEMS = [
+    ("wallpaper-basic", "기본", 0, True),
+    ("wallpaper-blue", "파란 벽지", 200, False),
+    ("wallpaper-gray", "회색 벽지", 200, False),
+    ("wallpaper-green", "초록 벽지", 200, False),
+    ("wallpaper-meolbow", "멀바우 벽지", 200, False),
+    ("wallpaper-pink", "분홍 벽지", 200, False),
+    ("wallpaper-purple", "보라 벽지", 200, False),
+    ("wallpaper-red", "빨간 벽지", 200, False),
+    ("wallpaper-teak", "티크 벽지", 200, False),
+    ("wallpaper-whiteoak", "화이트오크 벽지", 200, False),
+    ("wallpaper-yellow", "노란 벽지", 200, False),
+]
+
+WOOD_LABELS = [
+    ("maple", "메이플"),
+    ("merbau", "멀바우"),
+    ("oak", "오크"),
+    ("walnut", "월넛"),
+    ("white-oak", "화이트오크"),
+]
+
+COLOR_LABELS = [
+    ("blue", "파랑"),
+    ("green", "초록"),
+    ("pink", "핑크"),
+    ("purple", "보라"),
+    ("red", "빨강"),
+    ("teal", "청록"),
+    ("yellow", "노랑"),
+]
+
+
+def build_room_item_catalog() -> list[dict]:
+    catalog = [
+        {
+            "item_key": item_key,
+            "name": name,
+            "item_type": "wallpaper",
+            "image": f"/images/room/{item_key}.png",
+            "price": price,
+            "is_default": is_default,
+        }
+        for item_key, name, price, is_default in WALLPAPER_ITEMS
+    ]
+
+    catalog.append(
+        {
+            "item_key": "bed-basic",
+            "name": "기본",
+            "item_type": "bed",
+            "image": "/images/room/bed-basic.png",
+            "price": 0,
+            "is_default": True,
+        }
+    )
+    for wood_key, wood_label in WOOD_LABELS:
+        for color_key, color_label in COLOR_LABELS:
+            item_key = f"bed-{wood_key}-{color_key}"
+            catalog.append(
+                {
+                    "item_key": item_key,
+                    "name": f"{wood_label} {color_label}",
+                    "item_type": "bed",
+                    "image": f"/images/room/{item_key}.png",
+                    "price": 200,
+                    "is_default": False,
+                }
+            )
+
+    catalog.append(
+        {
+            "item_key": "closet-basic",
+            "name": "기본",
+            "item_type": "closet",
+            "image": "/images/room/closet-basic.png",
+            "price": 0,
+            "is_default": True,
+        }
+    )
+    for wood_key, wood_label in WOOD_LABELS:
+        item_key = f"closet-{wood_key}"
+        catalog.append(
+            {
+                "item_key": item_key,
+                "name": wood_label,
+                "item_type": "closet",
+                "image": f"/images/room/{item_key}.png",
+                "price": 200,
+                "is_default": False,
+            }
+        )
+
+    catalog.append(
+        {
+            "item_key": "table-basic",
+            "name": "기본",
+            "item_type": "table",
+            "image": "/images/room/table-basic.png",
+            "price": 0,
+            "is_default": True,
+        }
+    )
+    for wood_key, wood_label in WOOD_LABELS:
+        for color_key, color_label in COLOR_LABELS:
+            item_key = f"table-{wood_key}-{color_key}"
+            catalog.append(
+                {
+                    "item_key": item_key,
+                    "name": f"{wood_label} {color_label}",
+                    "item_type": "table",
+                    "image": f"/images/room/{item_key}.png",
+                    "price": 200,
+                    "is_default": False,
+                }
+            )
+
+    return catalog
+
+
+def load_room_items() -> list[dict]:
+    return build_room_item_catalog()
 
 
 def seed_room_items() -> tuple[int, int]:
-    room_items = json.loads(ROOM_ITEMS_PATH.read_text(encoding="utf-8"))
+    room_items = load_room_items()
     created = 0
     updated = 0
 

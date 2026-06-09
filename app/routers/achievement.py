@@ -21,6 +21,13 @@ SUPPORTED_EVENT_TYPES = {
     "campus_first_visit": "campus_visit",
 }
 
+ACCEPTED_NOOP_EVENT_TYPES = {
+    # Room equip counts are applied by the authoritative /rooms/me/equip API.
+    # Keep this frontend legacy event accepted so duplicate client-side sync calls
+    # do not fail or double-count the same equip action.
+    "room_item_equip_count",
+}
+
 
 @router.get("/", response_model=list[schemas.AchievementMaster])
 def list_achievements():
@@ -44,10 +51,14 @@ def create_achievement_event(
     db: Session = Depends(get_db),
 ):
     event_type = SUPPORTED_EVENT_TYPES.get(event_in.event_type)
-    if not event_type:
+    if not event_type and event_in.event_type not in ACCEPTED_NOOP_EVENT_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported achievement event")
 
-    unlocked_achievements = apply_achievement_event(db, current_user, event_type)
+    unlocked_achievements = (
+        apply_achievement_event(db, current_user, event_type)
+        if event_type
+        else []
+    )
     db.commit()
     db.refresh(current_user)
     return {
